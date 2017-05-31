@@ -1,3 +1,9 @@
+// TODO: Valgrind
+// TODO: Makefile
+// TODO: README
+// TODO: Answers + add Answers.pdf to Makefile of tar
+
+
 /**
  * @file CacheFS.cpp
  * @author Itai Tagar <itagar>
@@ -12,12 +18,11 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <cstdio>
+#include <string>
 #include <cstring>
-#include <stdlib.h>
 #include <malloc.h>
 #include <unistd.h>
 #include <cassert>
-#include <string>
 #include <iostream>
 #include <map>
 #include "CacheFS.h"
@@ -45,6 +50,12 @@
 #define MINIMUM_BLOCK_NUMBER 1
 
 /**
+ * @def INITIAL_BUFFER_INDEX 0
+ * @brief A Macro that sets the value of the initial buffer index.
+ */
+#define INITIAL_BUFFER_INDEX 0
+
+/**
  * @def PARTITION_LOWER_BOUND 0
  * @brief A Macro that sets the lower bound of partition percentage.
  */
@@ -62,6 +73,12 @@
  */
 #define TMP_PATH "/tmp"
 
+/**
+ * @def PATH_SEPARATOR "/"
+ * @brief A Macro that sets the path separator character.
+ */
+#define PATH_SEPARATOR '/'
+
 
 /*-----=  Type Definitions  =-----*/
 
@@ -69,12 +86,7 @@
 /**
  * @brief Type Definition for the block size type.
  */
-typedef long blockSize_t;
-
-/**
- * @brief Type Definition for the file path type.
- */
-typedef std::string filePath_t;
+typedef size_t blockSize_t;
 
 
 /*-----=  System Functions  =-----*/
@@ -88,27 +100,35 @@ static blockSize_t getBlockSize()
 {
     struct stat fi;
     stat(TMP_PATH, &fi);
-    return fi.st_blksize;
+    return (blockSize_t) fi.st_blksize;
 }
 
 
 /*-----=  Library Data  =-----*/
 
 
-// TODO: Doxygen.
+/**
+ * @brief The size of a single block in this system.
+ */
 blockSize_t blockSize = getBlockSize();
 
-// TODO: Doxygen.
+/**
+ * @brief The main buffer cache used by this library.
+ */
 char *bufferCache = nullptr;
 
-// TODO: Doxygen.
-int bufferIndex = 0;  // TODO: Magic Number.
+/**
+ * @brief The current index in the buffer cache.
+ */
+int bufferIndex = INITIAL_BUFFER_INDEX;
 
-// TODO: Doxygen.
-std::map<int, filePath_t> openFiles;
+/**
+ * @brief A Map which holds to open files during the run of this library.
+ */
+std::map<int, std::string> openFiles;
 
 
-/*-----=  Validation Functions  =-----*/
+/*-----=  TODO: Organize these functions  =-----*/
 
 
 /**
@@ -121,7 +141,6 @@ std::map<int, filePath_t> openFiles;
  */
 static int validatePartition(double const partition)
 {
-    // TODO: Check the correctness of this.
     if (PARTITION_LOWER_BOUND < partition && partition < PARTITION_UPPER_BOUND)
     {
         return FAILURE_STATE;
@@ -175,10 +194,58 @@ static int validateInitArguments(int const blocks_num, double const f_old,
     return SUCCESS_STATE;
 }
 
+/**
+ * @brief Validate that the given file path is in the 'tmp' directory.
+ * @param realPath The file path to validate.
+ * @return 0 if the path is a valid path, otherwise returns -1.
+ */
+static int validatePath(const char *realPath)
+{
+    // Check that the given path starts with '/tmp', i.e. the path is in the tmp
+    // folder in the file system.
+    unsigned int charIndex = 0;
+    for ( ; charIndex < strlen(TMP_PATH); ++charIndex)
+    {
+        if (realPath[charIndex] == TMP_PATH[charIndex])
+        {
+            continue;
+        }
+        // In case there is no match in the current char we can return failure.
+        return FAILURE_STATE;
+    }
+
+    // Check that the next char is '/'.
+    if (realPath[charIndex] != PATH_SEPARATOR)
+    {
+        return FAILURE_STATE;
+    }
+
+    return SUCCESS_STATE;
+}
+
 // TODO: Doxygen.
 static int validateReadArguments()
 {
 
+}
+
+/**
+ * @brief Determines if a given file ID is an open file in the library.
+ *        The function checks if the file ID which represent a file descriptor
+ *        is in the open files container.
+ * @param file_id The file ID to check.
+ * @return 0 in case of validation success, -1 in case of failure.
+ */
+static int isFileOpen(const int file_id)
+{
+    // Find the given file id in the open files container.
+    auto fileIterator = openFiles.find(file_id);
+    if (fileIterator == openFiles.end())
+    {
+        // If the given file id is invalid.
+        return FAILURE_STATE;
+    }
+    return SUCCESS_STATE;
 }
 
 
@@ -217,6 +284,7 @@ int CacheFS_init(int blocks_num, cache_algo_t cache_algo, double f_old,
         {
             return FAILURE_STATE;
         }
+        // TODO: Set algorithm to FBR and set the buffer to new/mid/old.
     }
 
     // If the selected algorithm is LRU/LFU.
@@ -227,6 +295,7 @@ int CacheFS_init(int blocks_num, cache_algo_t cache_algo, double f_old,
         {
             return FAILURE_STATE;
         }
+        // TODO: Set algorithm to LRU/LFU and leave buffer as is.
     }
 
     return SUCCESS_STATE;
@@ -247,50 +316,86 @@ int CacheFS_destroy()
     // Release resources of the buffer cache.
     free(bufferCache);
     bufferCache = nullptr;
-
     return SUCCESS_STATE;
 }
 
-// TODO: Doxygen.
+/**
+ * @brief File open operation. Receives a path for a file, opens it,
+ *        and returns an ID for accessing the file later. The ID in this
+ *        implementation is the file descriptor.
+ * @param pathname The path to the file that will be opened.
+ * @return On success the file descriptor is returned, -1 on failure.
+ */
 int CacheFS_open(const char *pathname)
 {
     // Receive the full path of the file.
-    const char *realPath = realpath(pathname, nullptr);
+    char *realPath = realpath(pathname, nullptr);
     if (realPath == nullptr)
     {
         // If the real path procedure failed.
         return FAILURE_STATE;
     }
-    filePath_t filePath(realPath);
-    // TODO: Check if the file in /tmp.
+
+    // Check if the given file to open is in the /tmp directory.
+    if (validatePath(realPath))
+    {
+        // Release memory allocated by 'realpath()'.
+        free(realPath);
+        realPath = nullptr;
+        return FAILURE_STATE;
+    }
 
     // Open the file in the given path.
     int fd = open(realPath, O_RDONLY | O_DIRECT | O_SYNC);
     if (fd < SUCCESS_STATE)
     {
         // In case open failed.
+        // Release memory allocated by 'realpath()'.
+        free(realPath);
+        realPath = nullptr;
         return FAILURE_STATE;
     }
 
-    // Insert the opened file to the open files data container with it's path.
-    openFiles[fd] = realPath;
+    // Insert the file to the open files data container with it's path.
+    openFiles[fd] = std::string(realPath);
+
+    // Release memory allocated by 'realpath()'.
+    free(realPath);
+    realPath = nullptr;
+
     return fd;
 }
 
-// TODO: Doxygen.
+/**
+ * @brief File close operation.
+ * @param file_id The file ID to close.
+ * @return 0 in case of success, negative value in case of failure.
+ */
 int CacheFS_close(int file_id)
 {
+    if (isFileOpen(file_id))
+    {
+        // In case of invalid file ID to close.
+        return FAILURE_STATE;
+    }
+
+    // Close the file stream.
+    if (close(file_id))
+    {
+        return FAILURE_STATE;
+    }
+
+    // Remove this file from the open files container.
+    openFiles.erase(file_id);
     return SUCCESS_STATE;
 }
 
 // TODO: Doxygen.
 int CacheFS_pread(int file_id, void *buf, size_t count, off_t offset)
 {
-    // Find the given file id in the open files container.
-    auto fileIterator = openFiles.find(file_id);
-    if (fileIterator == openFiles.end())
+    if (isFileOpen(file_id))
     {
-        // If the given file id is invalid.
+        // In case of invalid file ID to read from.
         return FAILURE_STATE;
     }
 
