@@ -12,6 +12,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <cstdio>
+#include <cstring>
 #include <stdlib.h>
 #include <malloc.h>
 #include <unistd.h>
@@ -181,20 +182,6 @@ static int validateReadArguments()
 }
 
 
-/*-----=  TODO: Delete all this  =-----*/
-
-
-static void printFilesMap()
-{
-    std::cout << "~~ Print open files ~~" << std::endl;
-    for (auto i = openFiles.begin(); i != openFiles.end(); ++i)
-    {
-        std::cout << i->first << ", " << i->second << std::endl;
-    }
-    std::cout << std::endl;
-}
-
-
 /*-----=  Library Implementation  =-----*/
 
 
@@ -318,24 +305,29 @@ int CacheFS_pread(int file_id, void *buf, size_t count, off_t offset)
     std::cout << "File Size: " << fileSize << std::endl;
     off_t startBlock = offset / blockSize;
     off_t endBlock = (count + offset) / blockSize;
-    off_t skip = offset % blockSize;
+    off_t startSkip = offset % blockSize;
+    off_t endSkip = (count + offset) % blockSize;
     size_t blocksToRead = (size_t)(endBlock - startBlock) + 1;
     std::cout << "Start Block: " << startBlock << std::endl;
     std::cout << "End Block: " << endBlock << std::endl;
-    std::cout << "Skip: " << skip << std::endl;
+    std::cout << "Start Skip: " << startSkip << std::endl;
+    std::cout << "End Skip: " << endSkip << std::endl;
     std::cout << "Blocks to Read: " << blocksToRead << std::endl;
 
     // Read to cache buffer entire blocks which contains the requested data.
     int blocksRead = (int) pread(file_id, bufferCache + bufferIndex, blocksToRead*blockSize, startBlock*blockSize);
-    std::cout << "Blocks Read: " << blocksRead / blockSize << std::endl;
-    std::cout << "Buffer Index: " << bufferIndex << std::endl;
 
-    std::cout << bufferCache << std::endl;
-
-    off_t startPosition = bufferIndex + skip;
+    off_t startPosition = bufferIndex + startSkip;
     std::cout << "startPosition: " << startPosition << std::endl;
 
-    bufferIndex += blocksRead;
+    memcpy(buf, bufferCache + (bufferIndex + startSkip), (size_t)blockSize - startSkip);
+    bytesRead += blockSize - startSkip;
+    buf += blockSize - startSkip;
+    bufferIndex += blockSize;
+    memcpy(buf, bufferCache + bufferIndex, (size_t)endSkip);
+    bytesRead += endSkip;
+    buf += endSkip;
+    bufferIndex += blockSize;
 
     std::cout << "Bytes Read: " << bytesRead << std::endl;
     return bytesRead;

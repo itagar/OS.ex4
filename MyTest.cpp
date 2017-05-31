@@ -16,7 +16,7 @@ int main(int argc, char *argv[])
     CacheFS_init(100, FBR, 0.3333, 0.5);
     int fd1 = CacheFS_open("TestFile");
     int fd2 = CacheFS_open("TestFile");
-    CacheFS_pread(fd1, buf, 150, 4000);
+    CacheFS_pread(fd1, buf, 150, 0);
     std::cout << buf << std::endl;
     delete[] buf;
     return 0;
