@@ -10,10 +10,15 @@
 
 
 #include <sys/stat.h>
+#include <fcntl.h>
 #include <cstdio>
+#include <stdlib.h>
+#include <malloc.h>
+#include <unistd.h>
 #include <cassert>
 #include <string>
-#include <vector>
+#include <iostream>
+#include <map>
 #include "CacheFS.h"
 
 
@@ -50,6 +55,12 @@
  */
 #define PARTITION_UPPER_BOUND 1
 
+/**
+ * @def TMP_PATH "/tmp"
+ * @brief A Macro that sets the path of the tmp directory.
+ */
+#define TMP_PATH "/tmp"
+
 
 /*-----=  Type Definitions  =-----*/
 
@@ -59,13 +70,13 @@
  */
 typedef long blockSize_t;
 
+/**
+ * @brief Type Definition for the file path type.
+ */
+typedef std::string filePath_t;
 
-/*-----=  Library Data  =-----*/
 
-
-
-
-/*-----=  Misc. Functions  =-----*/
+/*-----=  System Functions  =-----*/
 
 
 /**
@@ -75,9 +86,25 @@ typedef long blockSize_t;
 static blockSize_t getBlockSize()
 {
     struct stat fi;
-    stat("/tmp", &fi);
+    stat(TMP_PATH, &fi);
     return fi.st_blksize;
 }
+
+
+/*-----=  Library Data  =-----*/
+
+
+// TODO: Doxygen.
+blockSize_t blockSize = getBlockSize();
+
+// TODO: Doxygen.
+char *bufferCache = nullptr;
+
+// TODO: Doxygen.
+int bufferIndex = 0;  // TODO: Magic Number.
+
+// TODO: Doxygen.
+std::map<int, filePath_t> openFiles;
 
 
 /*-----=  Validation Functions  =-----*/
@@ -147,6 +174,26 @@ static int validateInitArguments(int const blocks_num, double const f_old,
     return SUCCESS_STATE;
 }
 
+// TODO: Doxygen.
+static int validateReadArguments()
+{
+
+}
+
+
+/*-----=  TODO: Delete all this  =-----*/
+
+
+static void printFilesMap()
+{
+    std::cout << "~~ Print open files ~~" << std::endl;
+    for (auto i = openFiles.begin(); i != openFiles.end(); ++i)
+    {
+        std::cout << i->first << ", " << i->second << std::endl;
+    }
+    std::cout << std::endl;
+}
+
 
 /*-----=  Library Implementation  =-----*/
 
@@ -167,6 +214,14 @@ static int validateInitArguments(int const blocks_num, double const f_old,
 int CacheFS_init(int blocks_num, cache_algo_t cache_algo, double f_old,
                  double f_new)
 {
+    // Allocate memory for the given amount of blocks number.
+    bufferCache = (char *) aligned_alloc(blockSize, blocks_num * blockSize);
+    if (bufferCache == nullptr)
+    {
+        // In case the memory allocation failed.
+        return FAILURE_STATE;
+    }
+
     // If the selected algorithm is FBR.
     if (cache_algo == FBR)
     {
@@ -202,23 +257,88 @@ int CacheFS_init(int blocks_num, cache_algo_t cache_algo, double f_old,
  */
 int CacheFS_destroy()
 {
+    // Release resources of the buffer cache.
+    free(bufferCache);
+    bufferCache = nullptr;
+
     return SUCCESS_STATE;
 }
 
-
+// TODO: Doxygen.
 int CacheFS_open(const char *pathname)
 {
-    return SUCCESS_STATE;
+    // Receive the full path of the file.
+    const char *realPath = realpath(pathname, nullptr);
+    if (realPath == nullptr)
+    {
+        // If the real path procedure failed.
+        return FAILURE_STATE;
+    }
+    filePath_t filePath(realPath);
+    // TODO: Check if the file in /tmp.
+
+    // Open the file in the given path.
+    int fd = open(realPath, O_RDONLY | O_DIRECT | O_SYNC);
+    if (fd < SUCCESS_STATE)
+    {
+        // In case open failed.
+        return FAILURE_STATE;
+    }
+
+    // Insert the opened file to the open files data container with it's path.
+    openFiles[fd] = realPath;
+    return fd;
 }
 
+// TODO: Doxygen.
 int CacheFS_close(int file_id)
 {
     return SUCCESS_STATE;
 }
 
+// TODO: Doxygen.
 int CacheFS_pread(int file_id, void *buf, size_t count, off_t offset)
 {
-    return SUCCESS_STATE;
+    // Find the given file id in the open files container.
+    auto fileIterator = openFiles.find(file_id);
+    if (fileIterator == openFiles.end())
+    {
+        // If the given file id is invalid.
+        return FAILURE_STATE;
+    }
+
+    // TODO: Check if the block contains data is in the cache.
+    // TODO: If the cache does not contains the block, calculate the block with data.
+    // TODO: Insert block to cache, check if cache full or not.
+    // TODO: If cache is full, remove by policy.
+    // TODO: Check if we reach the end of file.
+
+    int bytesRead = 0;
+    off_t fileSize = lseek(file_id, 0, SEEK_END);
+    std::cout << "File Size: " << fileSize << std::endl;
+    off_t startBlock = offset / blockSize;
+    off_t endBlock = (count + offset) / blockSize;
+    off_t skip = offset % blockSize;
+    size_t blocksToRead = (size_t)(endBlock - startBlock) + 1;
+    std::cout << "Start Block: " << startBlock << std::endl;
+    std::cout << "End Block: " << endBlock << std::endl;
+    std::cout << "Skip: " << skip << std::endl;
+    std::cout << "Blocks to Read: " << blocksToRead << std::endl;
+
+    // Read to cache buffer entire blocks which contains the requested data.
+    int blocksRead = (int) pread(file_id, bufferCache + bufferIndex, blocksToRead*blockSize, startBlock*blockSize);
+    std::cout << "Blocks Read: " << blocksRead / blockSize << std::endl;
+    std::cout << "Buffer Index: " << bufferIndex << std::endl;
+
+    std::cout << bufferCache << std::endl;
+
+    off_t startPosition = bufferIndex + skip;
+    std::cout << "startPosition: " << startPosition << std::endl;
+
+    bufferIndex += blocksRead;
+
+    std::cout << "Bytes Read: " << bytesRead << std::endl;
+    return bytesRead;
 }
 
 int CacheFS_print_cache(const char *log_path)
