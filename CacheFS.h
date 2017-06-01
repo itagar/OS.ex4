@@ -4,6 +4,9 @@
  *  Author: Netanel Zakay, Operating Systems course 2016-2017, HUJI
  */
 
+#include <stdlib.h>
+#include <stdlib.h>
+
 #ifndef CACHEFS_H
 #define CACHEFS_H
 
