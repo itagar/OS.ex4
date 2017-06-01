@@ -88,7 +88,7 @@
 
 /**
  * @def INITIAL_BYTES_READ 0
- * @brief A Macro that sets the value of initial value of bytes while reading.
+ * @brief A Macro that sets the value of initial bytes number while reading.
  */
 #define INITIAL_BYTES_READ 0
 
@@ -217,6 +217,59 @@ filesMap openFiles;
 blocksList blocks;
 
 
+/*-----=  Misc. Functions  =-----*/
+
+
+/**
+ * @brief Determines if a given file ID is an open file in the library.
+ *        The function checks if the file ID which represent a file descriptor
+ *        is in the open files container.
+ * @param file_id The file ID to check.
+ * @return 0 in case of validation success, -1 in case of failure.
+ */
+static int isFileOpen(const int file_id)
+{
+    // Find the given file id in the open files container.
+    auto fileIterator = openFiles.find(file_id);
+    if (fileIterator == openFiles.end())
+    {
+        // If the given file id is invalid.
+        return FAILURE_STATE;
+    }
+    return SUCCESS_STATE;
+}
+
+/**
+ * @brief Release all resources of the blocks that are currently in the buffer.
+ */
+static void releaseAllBlocks()
+{
+    for (auto i = blocks.begin(); i != blocks.end(); ++i)
+    {
+        free(i->buffer);
+        i->buffer = nullptr;
+    }
+}
+
+/**
+ * @brief Set the new and old boundaries in the buffer cache when FBR is the
+ *        selected algorithm.
+ * @param blocks_num The total number of blocks in the buffer cache.
+ * @param f_old The percentage of blocks in the old partition (rounding down).
+ * @param f_new The percentage of blocks in the new partition (rounding down).
+ */
+static void setBoundaries(int const blocks_num, double const f_old,
+                          double const f_new)
+{
+    int oldBlocks = (int)(blocks_num * f_old);
+    int newBlocks = (int)(blocks_num * f_new);
+    int midBlocks = blocks_num - newBlocks - oldBlocks;
+    // TODO: Check Rounding down as described in the documentation.
+    newBound = INITIAL_BOUNDARY + newBlocks;
+    oldBound = newBound + midBlocks;
+}
+
+
 /*-----=  Init Functions  =-----*/
 
 
@@ -319,9 +372,35 @@ static int validatePath(const char *realPath)
 /*-----=  Read Functions  =-----*/
 
 
-// TODO: Doxygen.
-static int validateReadArguments()
+/**
+ * @brief Determine if the given arguments for the read procedure are valid.
+ *        A file ID is invalid if it wasn't returned by the open procedure of
+ *        this library or it was already closed.
+ *        The buf is invalid if it is NULL.
+ *        The offset is invalid if it is negative.
+ * @param file_id The file ID to read from.
+ * @param buf The buffer to read the data into.
+ * @param offset The offset in the file to start the reading.
+ * @return 0 in case of validation success, -1 in case of failure.
+ */
+static int validateReadArguments(int const file_id, void *buf,
+                                 off_t const offset)
 {
+    if (isFileOpen(file_id))
+    {
+        // In case of invalid file ID to read from.
+        return FAILURE_STATE;
+    }
+    if (buf == nullptr)
+    {
+        // In case of invalid buffer.
+        return FAILURE_STATE;
+    }
+    if (offset < BLOCK_START_ALIGNMENT)
+    {
+        // In case of invalid offset.
+        return FAILURE_STATE;
+    }
     return SUCCESS_STATE;
 }
 
@@ -440,76 +519,26 @@ static void setupReadData(ReadData &readData, int const file_id,
 }
 
 
-/*-----=  Misc. Functions  =-----*/
-
-
-/**
- * @brief Determines if a given file ID is an open file in the library.
- *        The function checks if the file ID which represent a file descriptor
- *        is in the open files container.
- * @param file_id The file ID to check.
- * @return 0 in case of validation success, -1 in case of failure.
- */
-static int isFileOpen(const int file_id)
-{
-    // Find the given file id in the open files container.
-    auto fileIterator = openFiles.find(file_id);
-    if (fileIterator == openFiles.end())
-    {
-        // If the given file id is invalid.
-        return FAILURE_STATE;
-    }
-    return SUCCESS_STATE;
-}
-
-/**
- * @brief Release all resources of the blocks that are currently in the buffer.
- */
-static void releaseAllBlocks()
-{
-    for (auto i = blocks.begin(); i != blocks.end(); ++i)
-    {
-        free(i->buffer);
-        i->buffer = nullptr;
-    }
-}
-
-/**
- * @brief Set the new and old boundaries in the buffer cache when FBR is the
- *        selected algorithm.
- * @param blocks_num The total number of blocks in the buffer cache.
- * @param f_old The percentage of blocks in the old partition (rounding down).
- * @param f_new The percentage of blocks in the new partition (rounding down).
- */
-static void setBoundaries(int const blocks_num, double const f_old,
-                          double const f_new)
-{
-    int oldBlocks = (int)(blocks_num * f_old);
-    int newBlocks = (int)(blocks_num * f_new);
-    int midBlocks = blocks_num - newBlocks - oldBlocks;
-    // TODO: Check Rounding down as described in the documentation.
-    newBound = INITIAL_BOUNDARY + newBlocks;
-    oldBound = newBound + midBlocks;
-}
-
-
 /*-----=  Read Policy Functions  =-----*/
 
 
 // TODO: Doxygen.
-static int readFBR(int file_id, void *buf, size_t count, off_t offset)
+static int readFBR(int const file_id, void *buf, size_t const count,
+                   off_t const offset)
 {
     return 0;
 }
 
 // TODO: Doxygen.
-static int readLFU(int file_id, void *buf, size_t count, off_t offset)
+static int readLFU(int const file_id, void *buf, size_t const count,
+                   off_t const offset)
 {
     return 0;
 }
 
 // TODO: Doxygen.
-static int readLRU(int file_id, void *buf, size_t count, off_t offset)
+static int readLRU(int const file_id, void *buf, size_t const count,
+                   off_t const offset)
 {
     // Get the path of the file to read.
     std::string filePath = openFiles[file_id];
@@ -752,12 +781,22 @@ int CacheFS_close(int file_id)
     return SUCCESS_STATE;
 }
 
-// TODO: Doxygen.
+/**
+ * @brief Read data from an open file.
+ *        Read should return exactly the number of bytes requested except
+ *        on EOF or error.
+ * @param file_id The file ID to read from.
+ * @param buf The buffer to read the data into.
+ * @param count The amount of bytes to read from the file.
+ * @param offset The offset in the file to start the reading.
+ * @return On success, non negative value represents the number of bytes read.
+ *         On failure return -1.
+ */
 int CacheFS_pread(int file_id, void *buf, size_t count, off_t offset)
 {
-    if (isFileOpen(file_id))
+    // Validate the arguments of this call.
+    if (validateReadArguments(file_id, buf, offset))
     {
-        // In case of invalid file ID to read from.
         return FAILURE_STATE;
     }
 
