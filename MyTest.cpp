@@ -17,6 +17,8 @@ int main(int argc, char *argv[])
     int fd1 = CacheFS_open("TheBoyWhoLived");
     int fd2 = CacheFS_open("TheBoyWhoLived");
     CacheFS_pread(fd2, buf, 150, 0);
+    CacheFS_close(fd2);
+    std::cout << "CLOSE" << std::endl;
     CacheFS_pread(fd1, buf + 150, 4000, 150);
     CacheFS_pread(fd1, buf + 4150, 2500, 7500);
     CacheFS_close(fd1);
