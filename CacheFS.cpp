@@ -20,6 +20,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <cstdio>
+#include <cassert>
 #include <string>
 #include <cstring>
 #include <iostream>
@@ -74,13 +75,19 @@
 #define INITIAL_NUMBER_OF_BLOCKS 0
 
 /**
+ * @def INITIAL_BOUNDARY 0
+ * @brief A Macro that sets the value of initial boundary value for partitions.
+ */
+#define INITIAL_BOUNDARY 0
+
+/**
  * @def TMP_PATH "/tmp"
  * @brief A Macro that sets the path of the tmp directory.
  */
 #define TMP_PATH "/tmp"
 
 /**
- * @def PATH_SEPARATOR "/"
+ * @def PATH_SEPARATOR '/'
  * @brief A Macro that sets the path separator character.
  */
 #define PATH_SEPARATOR '/'
@@ -145,6 +152,15 @@ int activeBlocks = INITIAL_NUMBER_OF_BLOCKS;
 // TODO: Doxygen.
 int numberOfBlocks = INITIAL_NUMBER_OF_BLOCKS;
 
+// TODO: Doxygen.
+int newBound = INITIAL_BOUNDARY;
+
+// TODO: Doxygen.
+int oldBound = INITIAL_BOUNDARY;
+
+// TODO: Doxygen.
+cache_algo_t cachePolicy;
+
 /**
  * @brief A Map which holds to open files during the run of this library.
  */
@@ -156,7 +172,7 @@ filesMap openFiles;
 blocksVector blocks;
 
 
-/*-----=  TODO: Organize these functions  =-----*/
+/*-----=  Init Functions  =-----*/
 
 
 /**
@@ -171,9 +187,9 @@ static int validatePartition(double const partition)
 {
     if (PARTITION_LOWER_BOUND < partition && partition < PARTITION_UPPER_BOUND)
     {
-        return FAILURE_STATE;
+        return SUCCESS_STATE;
     }
-    return SUCCESS_STATE;
+    return FAILURE_STATE;
 }
 
 /**
@@ -185,17 +201,17 @@ static int validatePartition(double const partition)
  *        size of the partition of the new blocks is not positive.
  *        Also, fOld and fNew are invalid if the fOld + fNew is bigger than 1.
  *        Validation of f_old and f_new should take action only if the selected
- *        algorithm is FBR, which is indicated by the fbrFlag.
+ *        algorithm is FBR.
  * @param blocks_num The number of blocks in the buffer cache.
+ * @param cache_algo The cache algorithm that will be used.
  * @param f_old The percentage of blocks in the old partition (rounding down)
  *              relevant in FBR algorithm only
  * @param f_new The percentage of blocks in the new partition (rounding down)
  *              relevant in FBR algorithm only
- * @param fbrFlag Indicates if the selected algorithm is FBR.
  * @return 0 in case of validation success, -1 in case of failure.
  */
-static int validateInitArguments(int const blocks_num, double const f_old,
-                                 double const f_new, bool const fbrFlag)
+static int validateInitArguments(int const blocks_num, cache_algo_t cache_algo,
+                                 double const f_old, double const f_new)
 {
     // Check that the number of blocks is a positive number.
     if (blocks_num < MINIMUM_BLOCK_NUMBER)
@@ -203,12 +219,9 @@ static int validateInitArguments(int const blocks_num, double const f_old,
         return FAILURE_STATE;
     }
 
-    // Set the library data of the number of blocks to the given amount.
-    numberOfBlocks = blocks_num;
-
     // If the selected algorithm is FBR we have to check the values
     // of f_new and f_old as well.
-    if (fbrFlag)
+    if (cache_algo == FBR)
     {
         // Check the partition percentage of each partition.
         if (validatePartition(f_old) || validatePartition(f_new))
@@ -221,9 +234,12 @@ static int validateInitArguments(int const blocks_num, double const f_old,
             return FAILURE_STATE;
         }
     }
-
     return SUCCESS_STATE;
 }
+
+
+/*-----=  Open Functions  =-----*/
+
 
 /**
  * @brief Validate that the given file path is in the 'tmp' directory.
@@ -254,11 +270,68 @@ static int validatePath(const char *realPath)
     return SUCCESS_STATE;
 }
 
+
+/*-----=  Read Functions  =-----*/
+
+
 // TODO: Doxygen.
 static int validateReadArguments()
 {
-
+    return SUCCESS_STATE;
 }
+
+// TODO: Doxygen.
+static blocksVector::iterator findBlock(const std::string filePath,
+                                        const size_t blockNumber)
+{
+    auto blockIterator = blocks.begin();
+    for ( ; blockIterator != blocks.end(); ++blockIterator)
+    {
+        if (filePath.compare(blockIterator->filePath))
+        {
+            // If the file path is not equal to the block of file.
+            continue;
+        }
+        // The current block is from the requested file path.
+        // Now we check if the block itself is the requested block.
+        if (blockNumber == blockIterator->blockNumber)
+        {
+            // The block is in the buffer cache.
+            break;
+        }
+    }
+    return blockIterator;
+}
+
+// TODO: Doxygen.
+static size_t calculateBlocks(const size_t start, const size_t end,
+                              const size_t endRemainder)
+{
+    return (end - start) + (endRemainder == BLOCK_START_ALIGNMENT ? 0 : 1);
+}
+
+// TODO: Doxygen.
+static int allocateBlock(const int fileID, const size_t blockNumber)
+{
+    Block block;
+    block.filePath = openFiles[fileID];
+    block.blockNumber = blockNumber;
+    block.buffer = (char *) aligned_alloc(blockSize, blockSize);
+    if (block.buffer == nullptr)
+    {
+        // In case the memory allocation failed.
+        return FAILURE_STATE;
+    }
+    // Read to this block's buffer the block to read from the file.
+    pread(fileID, block.buffer, blockSize, blockNumber * blockSize);  // TODO: If fail, free memory.
+    blocks.push_back(block);
+    activeBlocks++;
+    return SUCCESS_STATE;
+}
+
+
+/*-----=  Misc. Functions  =-----*/
+
 
 /**
  * @brief Determines if a given file ID is an open file in the library.
@@ -283,6 +356,18 @@ static int isFileOpen(const int file_id)
 /*-----=  Library Implementation  =-----*/
 
 
+// TODO: Doxygen.
+static void setBoundaries(int const blocks_num, double const f_old,
+                          double const f_new)
+{
+    int oldBlocks = (int)(blocks_num * f_old);
+    int newBlocks = (int)(blocks_num * f_new);
+    int midBlocks = blocks_num - newBlocks - oldBlocks;
+
+    newBound = INITIAL_BOUNDARY + newBlocks;
+    oldBound = newBound + midBlocks;
+}
+
 /**
  * @brief Initializes the CacheFS.
  *        CacheFS_init will be called before any other function. CacheFS_init
@@ -299,26 +384,20 @@ static int isFileOpen(const int file_id)
 int CacheFS_init(int blocks_num, cache_algo_t cache_algo, double f_old,
                  double f_new)
 {
-    // If the selected algorithm is FBR.
-    if (cache_algo == FBR)
+    // First we validate the given arguments.
+    if (validateInitArguments(blocks_num, cache_algo, f_old, f_new))
     {
-        // First we validate the given arguments.
-        if (validateInitArguments(blocks_num, f_old, f_new, true))
-        {
-            return FAILURE_STATE;
-        }
-        // TODO: Set algorithm to FBR and set the buffer to new/mid/old.
+        return FAILURE_STATE;
     }
 
-    // If the selected algorithm is LRU/LFU.
-    else
+    // Set the library data by the given arguments.
+    numberOfBlocks = blocks_num;
+    cachePolicy = cache_algo;
+
+    // Organize the buffer cache according to the policy.
+    if (cachePolicy == FBR)
     {
-        // First we validate the given arguments.
-        if (validateInitArguments(blocks_num, f_old, f_new, false))
-        {
-            return FAILURE_STATE;
-        }
-        // TODO: Set algorithm to LRU/LFU and leave buffer as is.
+        setBoundaries(blocks_num, f_old, f_new);
     }
 
     return SUCCESS_STATE;
@@ -414,35 +493,12 @@ int CacheFS_close(int file_id)
     return SUCCESS_STATE;
 }
 
-// TODO: Doxygen.
-static blocksVector::iterator findBlock(const std::string filePath,
-                                        const size_t blockNumber)
+
+static int readLRU()
 {
-    auto blockIterator = blocks.begin();
-    for ( ; blockIterator != blocks.end(); ++blockIterator)
-    {
-        if (filePath.compare(blockIterator->filePath))
-        {
-            // If the file path is not equal to the block of file.
-            continue;
-        }
-        // The current block is from the requested file path.
-        // Now we check if the block itself is the requested block.
-        if (blockNumber == blockIterator->blockNumber)
-        {
-            // The block is in the buffer cache.
-            break;
-        }
-    }
-    return blockIterator;
+
 }
 
-// TODO: Doxygen.
-static size_t calculateBlocks(const size_t start, const size_t end,
-                              const size_t endRemainder)
-{
-    return (end - start) + (endRemainder == BLOCK_START_ALIGNMENT ? 0 : 1);
-}
 
 // TODO: Doxygen.
 int CacheFS_pread(int file_id, void *buf, size_t count, off_t offset)
@@ -456,9 +512,6 @@ int CacheFS_pread(int file_id, void *buf, size_t count, off_t offset)
     // Get the path of the file to read.
     std::string filePath = openFiles[file_id];
 
-    // TODO: Check if the block contains data is in the cache.
-    // TODO: If the cache does not contains the block, calculate the block with data.
-    // TODO: Insert block to cache, check if cache full or not.
     // TODO: If cache is full, remove by policy.
     // TODO: Check if we reach the end of file.
     // TODO: Move memory from cache to buf.
@@ -477,12 +530,22 @@ int CacheFS_pread(int file_id, void *buf, size_t count, off_t offset)
     // Calculate the total amount of blocks to read to the cache.
     size_t blocksToRead = calculateBlocks(startBlock, endBlock, endRemainder);
 
-
     std::cout << "Start Block: " << startBlock << std::endl;
     std::cout << "End Block: " << endBlock << std::endl;
     std::cout << "Start Remainder: " << startRemainder << std::endl;
     std::cout << "End Remainder: " << endRemainder << std::endl;
     std::cout << "Blocks to Read: " << blocksToRead << std::endl;
+
+    int readResult = SUCCESS_STATE;
+    switch (cachePolicy)
+    {
+        case FBR:
+            break;
+        case LRU:
+            break;
+        case LFU:
+            readResult = readLRU();
+    }
 
 
     size_t blockNumber = startBlock;
@@ -527,6 +590,8 @@ int CacheFS_pread(int file_id, void *buf, size_t count, off_t offset)
             blockNumber++;
         }
     }
+
+
 
     std::cout << "Bytes Read: " << bytesRead << std::endl;
     return bytesRead;
