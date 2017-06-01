@@ -3,6 +3,8 @@
 // TODO: README
 // TODO: Answers + add Answers.pdf to Makefile of tar
 // TODO: Check every system call.
+// TODO: Take care in handling file open by shortcuts.
+// TODO: Check negative value in count paramter while reading.
 
 
 /**
@@ -497,27 +499,47 @@ static int allocateBlock(Block &block, const int fileID,
 /**
  * @brief Setup data in the ReadData object of a current read call.
  * @param readData The ReadDAta object to set.
- * @param file_id The file ID in which the current read is on.
- * @param count The requested count by a read call.
+ * @param fileSize The size of the file.
+ * @param bytesToRead The actual bytes to read.
  * @param offset The requested offset by a read call.
  */
-static void setupReadData(ReadData &readData, int const file_id,
-                          size_t const count, off_t const offset)
+static void setupReadData(ReadData &readData, off_t const fileSize,
+                          size_t const bytesToRead, off_t const offset)
 {
     // Set the size of the file in bytes.
-    readData.fileSize = lseek(file_id, 0, SEEK_END);
+    readData.fileSize = fileSize;
     // Set the start and end block numbers in the file to read.
     readData.startBlock = offset / blockSize;
-    readData.endBlock = (count + offset) / blockSize;
+    readData.endBlock = (bytesToRead + offset) / blockSize;
     // Set the remainder to read from the start block and from the end.
     readData.startRemainder = offset % blockSize;
-    readData.endRemainder = (count + offset) % blockSize;
+    readData.endRemainder = (bytesToRead + offset) % blockSize;
     // Set the total amount of blocks to read to the cache from this file.
     readData.blocksToRead = calculateBlocks(readData.startBlock,
                                             readData.endBlock,
                                             readData.endRemainder);
 }
 
+// TODO: Doxygen.
+static size_t getBytesToRead(size_t const count, off_t const offset,
+                             off_t const fileSize)
+{
+    // If there is nothing asked to read by count, or if the given offset
+    // is larger then the actual file size then bytes to read is simply nothing.
+    if (count <= INITIAL_BYTES_READ || offset > fileSize)
+    {
+        return INITIAL_BYTES_READ;
+    }
+    // If the requested amount of data to read exceeds the actual file size
+    // we read only the available data.
+    if (offset + count > fileSize)
+    {
+        size_t overhead = (offset + count) - fileSize;
+        return count - overhead;
+    }
+    // In a normal case, bytes to read is the given count.
+    return count;
+}
 
 /*-----=  Read Policy Functions  =-----*/
 
@@ -541,19 +563,26 @@ static int readLRU(int const file_id, void *buf, size_t const count,
                    off_t const offset)
 {
     // Get the path of the file to read.
-    std::string filePath = openFiles[file_id];
+    const std::string filePath = openFiles[file_id];
+    // Get the path of the file to read.
+    const off_t fileSize = lseek(file_id, 0, SEEK_END);
     // Set data of total amount of bytes that has been read during this run.
     int bytesRead = INITIAL_BYTES_READ;
     // Set a variable of the current amount of data that is left to read.
-    size_t bytesToRead = count;
+    // Set it to the initial amount to read.
+    size_t bytesToRead = getBytesToRead(count, offset, fileSize);
     // Set a variable for the current buffer to read from into the given buf.
     char *currentBuffer = nullptr;
 
-    // TODO: Check if we reach the end of file.
+    // Check if there is actually nothing to read.
+    if (bytesToRead == INITIAL_BYTES_READ)
+    {
+        return bytesRead;
+    }
 
     // Setup the data of this read procedure.
     ReadData readData;
-    setupReadData(readData, file_id, count, offset);
+    setupReadData(readData, fileSize, bytesToRead, offset);
     std::cout << "-- Current Read Data -- " << std::endl;
     std::cout << "Requested to read " << count << " bytes starting from " << offset << " offset..." << std::endl;
     std::cout << "File Size: " << readData.fileSize << std::endl;
@@ -615,6 +644,7 @@ static int readLRU(int const file_id, void *buf, size_t const count,
                 free(blockToRemove->buffer);
                 blockToRemove->buffer = nullptr;
                 blocks.erase(blockToRemove);
+                activeBlocks--;
             }
 
             // There is a place for a new block so we create a new block
@@ -644,6 +674,7 @@ static int readLRU(int const file_id, void *buf, size_t const count,
         offsetInBlock = (offsetInBlock + currentCount) % blockSize;
         currentBlockNumber++;
 
+        std::cout << "Next BLOCK:" << currentBlockNumber << std::endl;
         std::cout << "Blocks in the cache:" << std::endl;
         for (auto j = blocks.begin(); j != blocks.end(); ++j)
         {
@@ -729,14 +760,13 @@ int CacheFS_open(const char *pathname)
     }
 
     // Check if the given file to open is in the /tmp directory.
-    // TODO: Uncomment this.
-//    if (validatePath(realPath))
-//    {
-//        // Release memory allocated by 'realpath()'.
-//        free(realPath);
-//        realPath = nullptr;
-//        return FAILURE_STATE;
-//    }
+    if (validatePath(realPath))
+    {
+        // Release memory allocated by 'realpath()'.
+        free(realPath);
+        realPath = nullptr;
+        return FAILURE_STATE;
+    }
 
     // Open the file in the given path.
     int fd = open(realPath, O_RDONLY | O_DIRECT | O_SYNC);

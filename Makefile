@@ -36,10 +36,11 @@ Valgrind: CacheFS MyTest.cpp
 	-rm -vf *.o *.a Valgrind
 
 
-# MyTest
-MyTest: CacheFS MyTest.cpp
-	$(CXX) $(CXXFLAGS) MyTest.cpp -o MyTest.o
-	$(CXX) MyTest.o -L. CacheFS.a -o MyTest
-	./MyTest
-	-rm -vf *.o *.a MyTest
+# LRU Test
+LRU: CacheFS LRUTest.cpp
+	cp TheBoyWhoLived /tmp/TheBoyWhoLived
+	$(CXX) $(CXXFLAGS) LRUTest.cpp -o LRUTest.o
+	$(CXX) LRUTest.o -L. CacheFS.a -o LRUTest
+	./LRUTest
+	-rm -rvf *.o *.a LRUTest /tmp/TheBoyWhoLived
 
