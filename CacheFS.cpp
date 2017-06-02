@@ -2,11 +2,9 @@
 // TODO: Makefile
 // TODO: README
 // TODO: Answers + add Answers.pdf to Makefile of tar
-// TODO: Check every system call.
 // TODO: Take care in handling file open by shortcuts.
 // TODO: Check negative value in count parameter while reading.
-// TODO: Rearrange header of sets of functions.
-// TODO: Split to helper functions.
+// TODO: Check Rounding down as described in the documentation for boundaries.
 
 
 /**
@@ -262,28 +260,6 @@ static void releaseAllBlocks()
     }
 }
 
-/**
- * @brief Set the new and old boundaries in the buffer cache when FBR is the
- *        selected algorithm.
- * @param blocks_num The total number of blocks in the buffer cache.
- * @param f_old The percentage of blocks in the old partition (rounding down).
- * @param f_new The percentage of blocks in the new partition (rounding down).
- */
-static void setBoundaries(int const blocks_num, double const f_old,
-                          double const f_new)
-{
-    std::cout << "Set Bounds" << std::endl;
-    int oldBlocks = (int)(blocks_num * f_old);
-    int newBlocks = (int)(blocks_num * f_new);
-    std::cout << "OLD BLOCKS = " << oldBlocks << std::endl;
-    std::cout << "NEW BLOCKS = " << newBlocks << std::endl;
-    int midBlocks = blocks_num - newBlocks - oldBlocks;
-    std::cout << "MID BLOCKS = " << midBlocks << std::endl;
-    // TODO: Check Rounding down as described in the documentation.
-    newBound = INITIAL_BOUNDARY + newBlocks;
-    oldBound = newBound + midBlocks;
-}
-
 
 /*-----=  Init Functions  =-----*/
 
@@ -350,11 +326,10 @@ static int validateInitArguments(int const blocks_num, cache_algo_t cache_algo,
     return SUCCESS_STATE;
 }
 
- /**
-  * @brief Resets all the library data to the initial values and clears all the
+/**
+ * @brief Resets all the library data to the initial values and clears all the
  *        containers in order to start a fresh run of this library.
-  * @param blocks_num The number of blocks in the buffer cache.
-  */
+ */
 static void resetLibraryData()
 {
     blockSize = getBlockSize();
@@ -364,6 +339,24 @@ static void resetLibraryData()
     oldBound = INITIAL_BOUNDARY;
     openFiles = filesMap();
     blocks = blocksList();
+}
+
+/**
+ * @brief Set the new and old boundaries in the buffer cache when FBR is the
+ *        selected algorithm.
+ * @param blocks_num The total number of blocks in the buffer cache.
+ * @param f_old The percentage of blocks in the old partition (rounding down).
+ * @param f_new The percentage of blocks in the new partition (rounding down).
+ */
+static void setBoundaries(int const blocks_num, double const f_old,
+                          double const f_new)
+{
+    int oldBlocks = (int)(blocks_num * f_old);
+    int newBlocks = (int)(blocks_num * f_new);
+    int midBlocks = blocks_num - newBlocks - oldBlocks;
+    // Set the boundaries data of the library.
+    newBound = INITIAL_BOUNDARY + newBlocks;
+    oldBound = newBound + midBlocks;
 }
 
 
@@ -377,11 +370,18 @@ static void resetLibraryData()
  */
 static int validatePath(const char *realPath)
 {
+    assert(realPath != nullptr);
+    if (strlen(realPath) < strlen(TMP_PATH))
+    {
+        return FAILURE_STATE;
+    }
+
     // Check that the given path starts with '/tmp', i.e. the path is in the tmp
     // folder in the file system.
     unsigned int charIndex = 0;
     for ( ; charIndex < strlen(TMP_PATH); ++charIndex)
     {
+        assert(charIndex < strlen(realPath));
         if (realPath[charIndex] == TMP_PATH[charIndex])
         {
             continue;
@@ -397,6 +397,177 @@ static int validatePath(const char *realPath)
     }
 
     return SUCCESS_STATE;
+}
+
+
+/*-----=  Cache Hit Functions  =-----*/
+
+
+/**
+ * @brief Update the buffer cache in case of a cache hit by LRU policy.
+ *        The update takes the given block that caused the cache hit and
+ *        place it at the top of the list.
+ * @param hitIterator Iterator to the block that caused the cache hit.
+ */
+static void cacheHitLRU(blocksList::iterator &hitIterator)
+{
+    assert(hitIterator != blocks.end());
+    blocks.splice(blocks.begin(), blocks, hitIterator);
+}
+
+/**
+ * @brief Update the buffer cache in case of a cache hit by LFU policy.
+ *        The update takes the given block that caused the cache hit and
+ *        increments it's reference counter by one.
+ * @param hitIterator Iterator to the block that caused the cache hit.
+ */
+static void cacheHitLFU(blocksList::iterator &hitIterator)
+{
+    assert(hitIterator != blocks.end());
+    (hitIterator->referenceCounter)++;
+}
+
+/**
+ * @brief Update the buffer cache in case of a cache hit by FBR policy.
+ *        The update takes the given block that caused the cache hit and
+ *        place it at the top of the list. Also, if the block was not in the
+ *        NEW section the update increments it's reference counter by one.
+ * @param hitIterator Iterator to the block that caused the cache hit.
+ */
+static void cacheHitFBR(blocksList::iterator &hitIterator)
+{
+    assert(hitIterator != blocks.end());
+    if (hitIterator->section != NEW)
+    {
+        cacheHitLFU(hitIterator);
+    }
+    cacheHitLRU(hitIterator);
+}
+
+/**
+ * @brief Generic function that handles cache hit situation.
+ * @param hitIterator Iterator to the block that caused the cache hit.
+ */
+static void cacheHitPolicy(blocksList::iterator &hitIterator)
+{
+    assert(hitIterator != blocks.end());
+    switch (cachePolicy)
+    {
+        case FBR:
+            cacheHitFBR(hitIterator);
+            break;
+        case LFU:
+            cacheHitLFU(hitIterator);
+            break;
+        case LRU:
+            cacheHitLRU(hitIterator);
+            break;
+    }
+}
+
+
+/*-----=  Block Removal Functions  =-----*/
+
+
+/**
+ * @brief Comparator of two block object which compares them by their
+ *        reference counter.
+ * @param lhs The first block to compare.
+ * @param rhs The second block to compare.
+ * @return true if lhs reference is smaller then the second, false otherwise.
+ */
+static bool refComparator(const Block &lhs, const Block &rhs)
+{
+    return lhs.referenceCounter < rhs.referenceCounter;
+}
+
+/**
+ * @brief Select the block to remove by the LRU policy.
+ *        The selected block will be the block at the end of the list.
+ * @return Iterator to the block to remove.
+ */
+static blocksList::iterator removeBlockLRU()
+{
+    return (--blocks.end());
+}
+
+/**
+ * @brief Select the block to remove by the LFU policy.
+ *        The selected block will be the block with the lowest reference count.
+ * @return Iterator to the block to remove.
+ */
+static blocksList::iterator removeBlockLFU()
+{
+    return std::min_element(blocks.begin(), blocks.end(), refComparator);
+}
+
+/**
+ * @brief Select the block to remove by the FBR policy.
+ *        The selected block will be the block with the lowest reference count
+ *        from the OLD section. If there are more then one, it will return
+ *        the least recently used block.
+ * @return Iterator to the block to remove.
+ */
+static blocksList::iterator removeBlockFBR()
+{
+    // First we reach the OLD section in the list.
+    int index = INITIAL_BLOCK_INDEX;
+    auto oldIterator = blocks.begin();
+    for ( ; oldIterator != blocks.end(); ++oldIterator)
+    {
+        if (index == oldBound)
+        {
+            break;  // We are in the start of the old section.
+        }
+        index++;
+    }
+    assert(oldIterator != blocks.end());
+    // Then we find the block in this section with the lowest reference count
+    // and take the least recently used one in case of several.
+    auto blockToRemove = oldIterator;
+    while (oldIterator != blocks.end())
+    {
+        if (!refComparator(*blockToRemove, *oldIterator))
+        {
+            blockToRemove = oldIterator;
+        }
+        ++oldIterator;
+    }
+
+    return blockToRemove;
+}
+
+/**
+ * @brief Generic function that handles block removal.
+ * @return Iterator to the block to remove.
+ */
+static blocksList::iterator removeBlockPolicy()
+{
+    switch (cachePolicy)
+    {
+        case FBR:
+            return removeBlockFBR();
+        case LFU:
+            return removeBlockLFU();
+        case LRU:
+            return removeBlockLRU();
+        default:
+            return blocks.end();
+    }
+}
+
+/**
+ * @brief Remove a block from the buffer and release it's resources.
+ *        The function also updates the amount of active blocks in the cache.
+ * @param blockToRemove Iterator to the block to remove.
+ */
+static void removeBlock(blocksList::iterator &blockToRemove)
+{
+    assert(blockToRemove != blocks.end());
+    free(blockToRemove->buffer);
+    blockToRemove->buffer = nullptr;
+    blocks.erase(blockToRemove);
+    activeBlocks--;
 }
 
 
@@ -484,6 +655,24 @@ static size_t calculateBlocks(const size_t start, const size_t end,
 }
 
 /**
+ * @brief Calculate to current amount of bytes to read from a single block
+ *        according to the given bytes that are left to read and the offset
+ *        in this block.
+ * @param bytesToRead Amount of bytes that are left to read.
+ * @param offsetInBlock The offset in the current block.
+ * @return The amount of bytes to read from a current block.
+ */
+static size_t calculateCurrentCount(size_t const &bytesToRead,
+                                    off_t const &offsetInBlock)
+{
+    if (offsetInBlock + bytesToRead < blockSize)
+    {
+        return bytesToRead;
+    }
+    return blockSize - offsetInBlock;
+}
+
+/**
  * @brief Allocate a new block in the buffer cache.
  *        This function receives a Block instance and set up it's data according
  *        to the given arguments. It then allocate memory to it's buffer which
@@ -491,18 +680,15 @@ static size_t calculateBlocks(const size_t start, const size_t end,
  * @param block The block instance to set.
  * @param fileID The file ID to read a block from.
  * @param blockNumber The block number to read to the buffer.
- * @param bufferSection The section of this block in the buffer.
- *        (If LRU/LFU the section is NONE).
  * @return 0 if the path is a valid path, otherwise returns -1.
  */
 static int allocateBlock(Block &block, const int fileID,
-                         const size_t blockNumber,
-                         const BufferSection bufferSection)
+                         const size_t blockNumber)
 {
     // Set the data of this block.
     block.filePath = openFiles[fileID];
     block.blockNumber = blockNumber;
-    block.section = bufferSection;
+    block.section = ((cachePolicy == FBR) ? NEW : NONE);
     block.referenceCounter = INITIAL_REFERENCE_COUNTER;
 
     // Allocate memory of the buffer to this block.
@@ -581,24 +767,12 @@ static size_t getBytesToRead(size_t const count, off_t const offset,
 }
 
 /**
- * @brief Comparator of two block object which compares them by their
- *        reference counter.
- * @param lhs The first block to compare.
- * @param rhs The second block to compare.
- * @return true if lhs reference is smaller then the second, false otherwise.
+ * @brief Updates the section fields of the blocks in the buffer cache.
+ *        Called only if the cache policy is FBR.
  */
-static bool refComparator(const Block &lhs, const Block &rhs)
-{
-    return lhs.referenceCounter < rhs.referenceCounter;
-}
-
-
-/*-----=  Read Policy Functions  =-----*/
-
-
-// TODO: Doxygen.
 static void updateSections()
 {
+    assert(cachePolicy == FBR);
     int index = INITIAL_BLOCK_INDEX;
     for (auto i = blocks.begin(); i != blocks.end(); ++i)
     {
@@ -621,63 +795,45 @@ static void updateSections()
     }
 }
 
-static blocksList::iterator removeBlockFBR()
+/**
+ * @brief An helper function for the read procedure of this library.
+ *        This function analyze and calculate all the read data requested by
+ *        the user and manage the buffer cache accordingly. It also takes into
+ *        account the cache policy selected for this library and in the
+ *        required situations it take actions according to the policy
+ *        (e.g. remove item/cache hit...)
+ * @param file_id The file ID to read from.
+ * @param buf The buffer to read the data into.
+ * @param count The amount of bytes to read from the file.
+ * @param offset The offset in the file to start the reading.
+ * @return On success, non negative value represents the number of bytes read.
+ *         On failure return -1.
+ */
+static int readHelper(int const file_id, void *buf, size_t const count,
+                      off_t const offset)
 {
-    // TODO: If two blocks has the same smallest ref count, then use LRU policy.
-    int index = INITIAL_BLOCK_INDEX;
-    auto oldIterator = blocks.begin();
-    for ( ; oldIterator != blocks.end(); ++oldIterator)
-    {
-        if (index == oldBound)
-        {
-            // We are in the start of the old section.
-            break;
-        }
-        index++;
-    }
-    // TODO: Create an helper function of this.
-    assert(oldIterator != blocks.end());
-    auto blockToRemove = oldIterator;
-    while (oldIterator != blocks.end())
-    {
-        if (blockToRemove->referenceCounter >= oldIterator->referenceCounter)
-        {
-            blockToRemove = oldIterator;
-        }
-        ++oldIterator;
-    }
-    return blockToRemove;
-}
+    std::cout << "/*=-- Current Read Data --=*/" << std::endl;
+    std::cout << "Requested to read " << count << " bytes starting from " << offset << " offset." << std::endl;
 
-// TODO: Doxygen.
-static int readFBR(int const file_id, void *buf, size_t const count,
-                   off_t const offset)
-{
-    std::cout << "Boundaries: <new=" << newBound << "><old=" << oldBound << ">" << std::endl;
-
-    // Get the path of the file to read.
+    // Get data of the file to read.
     const std::string filePath = openFiles[file_id];
-    // Get the file size of the file to read.
     const off_t fileSize = lseek(file_id, 0, SEEK_END);
-    // Set data of total amount of bytes that has been read during this run.
+
+    // Set variables for this current read call.
     int bytesRead = INITIAL_BYTES_READ;
-    // Set a variable of the current amount of data that is left to read.
-    // Set it to the initial amount to read.
     size_t bytesToRead = getBytesToRead(count, offset, fileSize);
+    if (bytesToRead == INITIAL_BYTES_READ)
+    {
+        // If there is actually nothing to read.
+        return bytesRead;
+    }
     // Set a variable for the current buffer to read from into the given buf.
     char *currentBuffer = nullptr;
 
-    // Check if there is actually nothing to read.
-    if (bytesToRead == INITIAL_BYTES_READ)
-    {
-        return bytesRead;
-    }
-
-    // Setup the data of this read procedure.
+    // Setup the read data.
     ReadData readData;
     setupReadData(readData, fileSize, bytesToRead, offset);
-    std::cout << "-- Current Read Data -- " << std::endl;
-    std::cout << "Requested to read " << count << " bytes starting from " << offset << " offset..." << std::endl;
+    std::cout << "-READ DATA- " << std::endl;
     std::cout << "File Size: " << readData.fileSize << std::endl;
     std::cout << "Start Block: " << readData.startBlock << std::endl;
     std::cout << "End Block: " << readData.endBlock << std::endl;
@@ -689,21 +845,12 @@ static int readFBR(int const file_id, void *buf, size_t const count,
     size_t currentBlockNumber = readData.startBlock;
     // The current offset in the current block.
     off_t offsetInBlock = readData.startRemainder;
-    // The current amount of bytes to read from this current block.
-    size_t currentCount = INITIAL_BYTES_READ;
-
     // Iterate all the blocks we need to read to the cache from the file.
     for (unsigned int i = 0; i < readData.blocksToRead; ++i)
     {
         // Calculate the current amount of bytes to read from this block.
-        if (offsetInBlock + bytesToRead < blockSize)
-        {
-            currentCount = bytesToRead;
-        }
-        else
-        {
-            currentCount = blockSize - offsetInBlock;
-        }
+        size_t currentCount = calculateCurrentCount(bytesToRead, offsetInBlock);
+
         std::cout << "Current Block Number: " << currentBlockNumber << std::endl;
         std::cout << "Bytes to Read: " << bytesToRead << std::endl;
         std::cout << "Current Offset: " << offsetInBlock << std::endl;
@@ -714,19 +861,11 @@ static int readFBR(int const file_id, void *buf, size_t const count,
         if (blockIterator != blocks.end())
         {
             std::cout << "Found This Block in the Cache!" << std::endl;
-            // Block is already in the buffer cache.
-            // Set current buffer accordingly.
+            // Block is already in the buffer cache so we set current
+            // buffer accordingly.
             currentBuffer = blockIterator->buffer + offsetInBlock;
-            // Update the reference counter of this block by the FBR policy.
-            // The update moves the current block item to the beginning of the
-            // blocks list which indicates that it has been most recently used.
-            // Also it increment it's reference count if it is wasn't in the
-            // NEW section.
-            blocks.splice(blocks.begin(), blocks, blockIterator);
-            if (blockIterator->section != NEW)
-            {
-                (blockIterator->referenceCounter)++;
-            }
+            // Update buffer by the cache hit policy of the selected algorithm.
+            cacheHitPolicy(blockIterator);
         }
         else
         {
@@ -736,27 +875,20 @@ static int readFBR(int const file_id, void *buf, size_t const count,
             if (activeBlocks == numberOfBlocks)
             {
                 // If the cache is full we have to remove a block according
-                // to the FBR policy.
-                // Remove the block with the lowest reference counter from the
-                // old section. in case of several, remove the one that
-                // is least recently used.
-                auto blockToRemove = removeBlockFBR();
-                std::cout << "Removing Block: " << "<" << blockToRemove->blockNumber << "," << blockToRemove->referenceCounter << "," << blockToRemove->section << ">" << std::endl;
-                free(blockToRemove->buffer);
-                blockToRemove->buffer = nullptr;
-                blocks.erase(blockToRemove);
-                activeBlocks--;
+                // to the selected policy.
+                auto blockToRemove = removeBlockPolicy();
+                assert(blockToRemove != blocks.end());
+                std::cout << "Removing Block: <" << blockToRemove->blockNumber << "," << blockToRemove->referenceCounter << "," << blockToRemove->section << ">" << std::endl;
+                removeBlock(blockToRemove);
             }
 
             // There is a place for a new block so we create a new block
             // and allocate it in the buffer cache.
             Block block;
-            if (allocateBlock(block, file_id, currentBlockNumber, NEW))
+            if (allocateBlock(block, file_id, currentBlockNumber))
             {
                 return FAILURE_STATE;
             }
-            // Insert the block to the beginning of th list which indicates
-            // that this block has been most recently used.
             blocks.push_front(block);
             // Set current buffer accordingly.
             currentBuffer = block.buffer + offsetInBlock;
@@ -772,12 +904,13 @@ static int readFBR(int const file_id, void *buf, size_t const count,
         bytesRead += currentCount;
         bytesToRead -= currentCount;
         offsetInBlock = (offsetInBlock + currentCount) % blockSize;
+        if (cachePolicy == FBR)
+        {
+            updateSections();
+        }
         currentBlockNumber++;
 
-        updateSections();
-
-        std::cout << "Next BLOCK:" << currentBlockNumber << std::endl;
-        std::cout << "Blocks in the cache:" << std::endl;
+        std::cout << "--Blocks in the cache--" << std::endl;
         for (auto j = blocks.begin(); j != blocks.end(); ++j)
         {
             std::cout << "<" <<  j->blockNumber << "," << j->referenceCounter << "," << j->section << ">  ";
@@ -785,262 +918,7 @@ static int readFBR(int const file_id, void *buf, size_t const count,
         std::cout << std::endl;
     }
 
-    std::cout << "Bytes Read: " << bytesRead << std::endl;
-    return bytesRead;
-}
-
-// TODO: Doxygen.
-static int readLFU(int const file_id, void *buf, size_t const count,
-                   off_t const offset)
-{
-    // Get the path of the file to read.
-    const std::string filePath = openFiles[file_id];
-    // Get the file size of the file to read.
-    const off_t fileSize = lseek(file_id, 0, SEEK_END);
-    // Set data of total amount of bytes that has been read during this run.
-    int bytesRead = INITIAL_BYTES_READ;
-    // Set a variable of the current amount of data that is left to read.
-    // Set it to the initial amount to read.
-    size_t bytesToRead = getBytesToRead(count, offset, fileSize);
-    // Set a variable for the current buffer to read from into the given buf.
-    char *currentBuffer = nullptr;
-
-    // Check if there is actually nothing to read.
-    if (bytesToRead == INITIAL_BYTES_READ)
-    {
-        return bytesRead;
-    }
-
-    // Setup the data of this read procedure.
-    ReadData readData;
-    setupReadData(readData, fileSize, bytesToRead, offset);
-    std::cout << "-- Current Read Data -- " << std::endl;
-    std::cout << "Requested to read " << count << " bytes starting from " << offset << " offset..." << std::endl;
-    std::cout << "File Size: " << readData.fileSize << std::endl;
-    std::cout << "Start Block: " << readData.startBlock << std::endl;
-    std::cout << "End Block: " << readData.endBlock << std::endl;
-    std::cout << "Start Remainder: " << readData.startRemainder << std::endl;
-    std::cout << "End Remainder: " << readData.endRemainder << std::endl;
-    std::cout << "Blocks to Read: " << readData.blocksToRead << std::endl;
-
-    // The current number of block in the file to read.
-    size_t currentBlockNumber = readData.startBlock;
-    // The current offset in the current block.
-    off_t offsetInBlock = readData.startRemainder;
-    // The current amount of bytes to read from this current block.
-    size_t currentCount = INITIAL_BYTES_READ;
-
-    // Iterate all the blocks we need to read to the cache from the file.
-    for (unsigned int i = 0; i < readData.blocksToRead; ++i)
-    {
-        // Calculate the current amount of bytes to read from this block.
-        if (offsetInBlock + bytesToRead < blockSize)
-        {
-            currentCount = bytesToRead;
-        }
-        else
-        {
-            currentCount = blockSize - offsetInBlock;
-        }
-        std::cout << "Current Block Number: " << currentBlockNumber << std::endl;
-        std::cout << "Bytes to Read: " << bytesToRead << std::endl;
-        std::cout << "Current Offset: " << offsetInBlock << std::endl;
-        std::cout << "Current Count: " << currentCount << std::endl;
-
-        // Check if this block is already in the cache buffer.
-        auto blockIterator = findBlock(filePath, currentBlockNumber);
-        if (blockIterator != blocks.end())
-        {
-            std::cout << "Found This Block in the Cache!" << std::endl;
-            // Block is already in the buffer cache.
-            // Set current buffer accordingly.
-            currentBuffer = blockIterator->buffer + offsetInBlock;
-            // Update the reference counter of this block by the LFU policy.
-            (blockIterator->referenceCounter)++;
-        }
-        else
-        {
-            // Block is not in the buffer cache.
-            // Check if there is place in the cache for a new block.
-            assert(activeBlocks <= numberOfBlocks);
-            if (activeBlocks == numberOfBlocks)
-            {
-                // If the cache is full we have to remove a block according
-                // to the LFU policy.
-                // Remove the block with the lowest reference counter.
-                auto blockToRemove = std::min_element(blocks.begin(), blocks.end(), refComparator);
-                std::cout << "Removing Block: " << "<" << blockToRemove->blockNumber << "," << blockToRemove->referenceCounter << ">" << std::endl;
-                free(blockToRemove->buffer);
-                blockToRemove->buffer = nullptr;
-                blocks.erase(blockToRemove);
-                activeBlocks--;
-            }
-
-            // There is a place for a new block so we create a new block
-            // and allocate it in the buffer cache.
-            Block block;
-            if (allocateBlock(block, file_id, currentBlockNumber, NONE))
-            {
-                return FAILURE_STATE;
-            }
-            // Insert the block to the beginning of th list which indicates
-            // that this block has been most recently used.
-            blocks.push_front(block);
-            // Set current buffer accordingly.
-            currentBuffer = block.buffer + offsetInBlock;
-            // Update the amount of blocks in the cache.
-            activeBlocks++;
-        }
-
-        // Copy data from the buffer block in the cache to the given buf.
-        memcpy(buf, currentBuffer, currentCount);
-
-        // Update data for the next block reading.
-        buf += currentCount;
-        bytesRead += currentCount;
-        bytesToRead -= currentCount;
-        offsetInBlock = (offsetInBlock + currentCount) % blockSize;
-        currentBlockNumber++;
-
-        std::cout << "Next BLOCK:" << currentBlockNumber << std::endl;
-        std::cout << "Blocks in the cache:" << std::endl;
-        for (auto j = blocks.begin(); j != blocks.end(); ++j)
-        {
-            std::cout << "<" <<  j->blockNumber << "," << j->referenceCounter << ">  ";
-        }
-        std::cout << std::endl;
-    }
-
-    std::cout << "Bytes Read: " << bytesRead << std::endl;
-    return bytesRead;
-}
-
-// TODO: Doxygen.
-static int readLRU(int const file_id, void *buf, size_t const count,
-                   off_t const offset)
-{
-    // Get the path of the file to read.
-    const std::string filePath = openFiles[file_id];
-    // Get the file size of the file to read.
-    const off_t fileSize = lseek(file_id, 0, SEEK_END);
-    // Set data of total amount of bytes that has been read during this run.
-    int bytesRead = INITIAL_BYTES_READ;
-    // Set a variable of the current amount of data that is left to read.
-    // Set it to the initial amount to read.
-    size_t bytesToRead = getBytesToRead(count, offset, fileSize);
-    // Set a variable for the current buffer to read from into the given buf.
-    char *currentBuffer = nullptr;
-
-    // Check if there is actually nothing to read.
-    if (bytesToRead == INITIAL_BYTES_READ)
-    {
-        return bytesRead;
-    }
-
-    // Setup the data of this read procedure.
-    ReadData readData;
-    setupReadData(readData, fileSize, bytesToRead, offset);
-    std::cout << "-- Current Read Data -- " << std::endl;
-    std::cout << "Requested to read " << count << " bytes starting from " << offset << " offset..." << std::endl;
-    std::cout << "File Size: " << readData.fileSize << std::endl;
-    std::cout << "Start Block: " << readData.startBlock << std::endl;
-    std::cout << "End Block: " << readData.endBlock << std::endl;
-    std::cout << "Start Remainder: " << readData.startRemainder << std::endl;
-    std::cout << "End Remainder: " << readData.endRemainder << std::endl;
-    std::cout << "Blocks to Read: " << readData.blocksToRead << std::endl;
-
-    // The current number of block in the file to read.
-    size_t currentBlockNumber = readData.startBlock;
-    // The current offset in the current block.
-    off_t offsetInBlock = readData.startRemainder;
-    // The current amount of bytes to read from this current block.
-    size_t currentCount = INITIAL_BYTES_READ;
-
-    // Iterate all the blocks we need to read to the cache from the file.
-    for (unsigned int i = 0; i < readData.blocksToRead; ++i)
-    {
-        // Calculate the current amount of bytes to read from this block.
-        if (offsetInBlock + bytesToRead < blockSize)
-        {
-            currentCount = bytesToRead;
-        }
-        else
-        {
-            currentCount = blockSize - offsetInBlock;
-        }
-        std::cout << "Current Block Number: " << currentBlockNumber << std::endl;
-        std::cout << "Bytes to Read: " << bytesToRead << std::endl;
-        std::cout << "Current Offset: " << offsetInBlock << std::endl;
-        std::cout << "Current Count: " << currentCount << std::endl;
-
-        // Check if this block is already in the cache buffer.
-        auto blockIterator = findBlock(filePath, currentBlockNumber);
-        if (blockIterator != blocks.end())
-        {
-            std::cout << "Found This Block in the Cache!" << std::endl;
-            // Block is already in the buffer cache.
-            // Set current buffer accordingly.
-            currentBuffer = blockIterator->buffer + offsetInBlock;
-            // Update the position of this block in the list by the LRU policy.
-            // The update moves the current block item to the beginning of the
-            // blocks list which indicates that it has been most recently used.
-            blocks.splice(blocks.begin(), blocks, blockIterator);
-        }
-        else
-        {
-            // Block is not in the buffer cache.
-            // Check if there is place in the cache for a new block.
-            assert(activeBlocks <= numberOfBlocks);
-            if (activeBlocks == numberOfBlocks)
-            {
-                // If the cache is full we have to remove a block according
-                // to the LRU policy.
-                // Remove the block from the end of the list because this is
-                // the block that is least recently used.
-                auto blockToRemove = --blocks.end();
-                free(blockToRemove->buffer);
-                blockToRemove->buffer = nullptr;
-                blocks.erase(blockToRemove);
-                activeBlocks--;
-            }
-
-            // There is a place for a new block so we create a new block
-            // and allocate it in the buffer cache.
-            Block block;
-            if (allocateBlock(block, file_id, currentBlockNumber, NONE))
-            {
-                return FAILURE_STATE;
-            }
-            // Insert the block to the beginning of th list which indicates
-            // that this block has been most recently used.
-            blocks.push_front(block);
-            // Set current buffer accordingly.
-            currentBuffer = block.buffer + offsetInBlock;
-            // Update the amount of blocks in the cache.
-            activeBlocks++;
-
-        }
-
-        // Copy data from the buffer block in the cache to the given buf.
-        memcpy(buf, currentBuffer, currentCount);
-
-        // Update data for the next block reading.
-        buf += currentCount;
-        bytesRead += currentCount;
-        bytesToRead -= currentCount;
-        offsetInBlock = (offsetInBlock + currentCount) % blockSize;
-        currentBlockNumber++;
-
-        std::cout << "Next BLOCK:" << currentBlockNumber << std::endl;
-        std::cout << "Blocks in the cache:" << std::endl;
-        for (auto j = blocks.begin(); j != blocks.end(); ++j)
-        {
-            std::cout << j->blockNumber << " ";
-        }
-        std::cout << std::endl;
-    }
-
-    std::cout << "Bytes Read: " << bytesRead << std::endl;
+    std::cout << "Bytes Read: " << bytesRead << std::endl << std::endl;
     return bytesRead;
 }
 
@@ -1189,19 +1067,7 @@ int CacheFS_pread(int file_id, void *buf, size_t count, off_t offset)
     {
         return FAILURE_STATE;
     }
-
-    // perform read operation according to the selected policy.
-    switch (cachePolicy)
-    {
-        case FBR:
-            return readFBR(file_id, buf, count, offset);
-        case LFU:
-            return readLFU(file_id, buf, count, offset);
-        case LRU:
-            return readLRU(file_id, buf, count, offset);
-        default:
-            return FAILURE_STATE;
-    }
+    return readHelper(file_id, buf, count, offset);
 }
 
 // TODO: Doxygen.

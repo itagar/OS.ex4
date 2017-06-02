@@ -14,7 +14,7 @@
 
 #define BUFFER_SIZE 100000
 #define CHAPTER_1 "/tmp/TheBoyWhoLived"
-#define NOT_TMP "TheBoyWhoLived"
+#define NOT_TMP "/"
 
 
 int main(int argc, char *argv[])
