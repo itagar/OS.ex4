@@ -26,12 +26,12 @@ tar:
 
 # Other Targets
 clean:
-	-rm -vf *.o *.a *.tar Search
+	-rm -vf *.o *.a *.tar
 
 
 # Valgrind
-Valgrind: CacheFS MyTest.cpp
-	$(CXX) -g -Wall -std=c++11 MyTest.cpp -L. CacheFS.a -o Valgrind
+Valgrind: CacheFS FBRTest.cpp
+	$(CXX) -g -Wall -std=c++11 FBRTest.cpp -L. CacheFS.a -o Valgrind
 	valgrind --leak-check=full --show-possibly-lost=yes --show-reachable=yes --undef-value-errors=yes ./Valgrind
 	-rm -vf *.o *.a Valgrind
 

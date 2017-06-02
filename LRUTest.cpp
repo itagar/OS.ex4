@@ -23,7 +23,7 @@ int main(int argc, char *argv[])
     try
     {
         char *buf = new char[BUFFER_SIZE];
-        int initResult = CacheFS_init(10, LRU, 2, 0.5);
+        int initResult = CacheFS_init(4, LRU, 2, 0.5);
         if (initResult)
         {
             std::cerr << "You should not care about f_old/f_new in LRU" << std::endl;
@@ -99,21 +99,13 @@ int main(int argc, char *argv[])
         // Read from the first file chunk that is bigger then the file itself.
         if (CacheFS_pread(f1, buf + 9982, 0, 100) != 0)
         {
-            std::cerr << "Error in CacheFS_pread while reading with negative count" << std::endl;
+            std::cerr << "Error in CacheFS_pread while reading with zero count" << std::endl;
             return -1;
         }
 
-        // Read from the first file chunk that is bigger then the file itself.
         if (CacheFS_pread(f1, buf, 7000, 0) != 7000)
         {
-            std::cerr << "Error in CacheFS_pread while reading with larger request" << std::endl;
-            return -1;
-        }
-
-        // Read from the first file chunk that is bigger then the file itself.
-        if (CacheFS_pread(f1, buf, 50, 25000) != 50)
-        {
-            std::cerr << "Error in CacheFS_pread while reading with larger request" << std::endl;
+            std::cerr << "Error in CacheFS_pread while legally reading" << std::endl;
             return -1;
         }
 
