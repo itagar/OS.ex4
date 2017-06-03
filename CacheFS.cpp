@@ -29,6 +29,7 @@
 #include <map>
 #include <list>
 #include <algorithm>
+#include <fstream>
 #include "CacheFS.h"
 
 
@@ -112,6 +113,12 @@
  * @brief A Macro that sets the path separator character.
  */
 #define PATH_SEPARATOR '/'
+
+/**
+ * @def LOG_SEPARATOR " "
+ * @brief A Macro that sets a separator in the log file.
+ */
+#define LOG_SEPARATOR " "
 
 
 /*-----=  Type Definitions & Enums  =-----*/
@@ -1070,9 +1077,85 @@ int CacheFS_pread(int file_id, void *buf, size_t count, off_t offset)
     return readHelper(file_id, buf, count, offset);
 }
 
-// TODO: Doxygen.
+
+static void printBlocks(std::ofstream &logFile, const blocksList &blocksToPrint)
+{
+    for (auto i = blocksToPrint.begin(); i != blocksToPrint.end(); ++i)
+    {
+        logFile << i->filePath << LOG_SEPARATOR << i->blockNumber << std::endl;
+    }
+}
+
+static void printCacheLRU(std::ofstream &logFile)
+{
+    // Print the cache state by the order of the blocks in the list.
+    printBlocks(logFile, blocks);
+}
+
+static void printCacheLFU(std::ofstream &logFile)
+{
+    // Print the cache state by order of reference counter.
+    blocksList blocksToPrint = blocks;
+    blocksToPrint.sort(refComparator);
+    blocksToPrint.reverse();
+    printBlocks(logFile, blocksToPrint);
+}
+
+
+static void printCacheFBR(std::ofstream &logFile)
+{
+    // Print the cache state by the order of the blocks in the list.
+    printCacheLRU(logFile);
+}
+
+/**
+ * @brief Generic function that handles printing the blocks in the cache.
+ * @param logFile Iterator to the block that caused the cache hit.
+ */
+static void printCachePolicy(std::ofstream &logFile)
+{
+    assert(logFile.good());
+    switch (cachePolicy)
+    {
+        case FBR:
+            printCacheFBR(logFile);
+            break;
+        case LFU:
+            printCacheLFU(logFile);
+            break;
+        case LRU:
+            printCacheLRU(logFile);
+            break;
+    }
+}
+
+/**
+ * @brief This function writes the current state of the cache to a file.
+ *        The function writes a line for every block that was used in the cache
+ *        (meaning, each block with at least one access).
+ *        Each line contains the following values separated by a single space.
+ *          1.  Full path of the file
+ *          2.  The number of the block. Pay attention: this is not the number
+ *              in the cache, but the enumeration within the file itself,
+ *              starting with 0 for the first block in each file.
+ *        For LRU and LFU The order of the entries is from the last block
+ *        that will be evicted from the cache to the first (next) block that
+ *        will be evicted. For FBR use the LRU order (the order of the stack).
+ * @param log_path A path of the log file. A valid path is either: a path to an
+ *                 existing log file or a path to a new file
+ *                 (under existing directory).
+ * @return 0 in case of success, -1 in case of failure.
+ */
 int CacheFS_print_cache(const char *log_path)
 {
+    // Open log file stream.
+    std::ofstream logFile(log_path, std::ios_base::app | std::ios_base::out);
+    if (logFile.fail())
+    {
+        return FAILURE_STATE;
+    }
+    // Print cache state.
+    printCachePolicy(logFile);
     return SUCCESS_STATE;
 }
 

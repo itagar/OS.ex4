@@ -15,11 +15,13 @@
 #define BUFFER_SIZE 100000
 #define CHAPTER_1 "/tmp/TheBoyWhoLived"
 #define NOT_TMP "TheBoyWhoLived"
+#define LOG_PATH "logFile"
+
 
 
 int main(int argc, char *argv[])
 {
-    for (int i = 0; i < 3; ++i)
+    for (int i = 0; i < 1; ++i)
     {
         std::cout << "Starting LFU Test..." << i << std::endl;
         try
@@ -31,6 +33,7 @@ int main(int argc, char *argv[])
                 std::cerr << "You should not care about f_old/f_new in LFU" << std::endl;
                 return -1;
             }
+
             // Open the same file twice.
             int f1 = CacheFS_open(CHAPTER_1);
             int f2 = CacheFS_open(CHAPTER_1);
@@ -64,6 +67,7 @@ int main(int argc, char *argv[])
                 std::cerr << "Error in CacheFS_close while closing illegal file" << std::endl;
                 return -1;
             }
+            CacheFS_print_cache(LOG_PATH);
 
             // Read from the first file the first + second block.
             if (CacheFS_pread(f1, buf + 150, 4000, 150) != 4000)
@@ -71,12 +75,15 @@ int main(int argc, char *argv[])
                 std::cerr << "Error in CacheFS_pread while legally reading" << std::endl;
                 return -1;
             }
+            CacheFS_print_cache(LOG_PATH);
+
             // Read from the illegal file.
             if (CacheFS_pread(f3, buf + 4150, 5000, 0) != -1)
             {
                 std::cerr << "Error in CacheFS_pread while illegally reading" << std::endl;
                 return -1;
             }
+
             // Read from the illegal file.
             if (CacheFS_pread(f2, buf + 4150, 5000, 0) != -1)
             {
@@ -90,6 +97,7 @@ int main(int argc, char *argv[])
                 std::cerr << "Error in CacheFS_pread while reading with larger request" << std::endl;
                 return -1;
             }
+            CacheFS_print_cache(LOG_PATH);
 
             // Read from the first file chunk that is bigger then the file itself.
             if (CacheFS_pread(f1, buf + 9982, 150, 50000) != 0)
@@ -110,6 +118,7 @@ int main(int argc, char *argv[])
                 std::cerr << "Error in CacheFS_pread while legally reading" << std::endl;
                 return -1;
             }
+            CacheFS_print_cache(LOG_PATH);
 
             // Read from the first file chunk that is bigger then the file itself.
             if (CacheFS_pread(f1, buf + 7000, 50000, 7000) != 18832)
@@ -117,6 +126,7 @@ int main(int argc, char *argv[])
                 std::cerr << "Error in CacheFS_pread while reading with larger request" << std::endl;
                 return -1;
             }
+            CacheFS_print_cache(LOG_PATH);
 
             // Close the first file.
             if (CacheFS_close(f1) != 0)

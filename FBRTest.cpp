@@ -15,6 +15,8 @@
 #define BUFFER_SIZE 100000
 #define CHAPTER_1 "/tmp/TheBoyWhoLived"
 #define NOT_TMP "/"
+#define LOG_PATH "logFile"
+
 
 
 int main(int argc, char *argv[])
@@ -129,6 +131,7 @@ int main(int argc, char *argv[])
                 std::cerr << "Error in CacheFS_close while closing legal file" << std::endl;
                 return -1;
             }
+            CacheFS_print_cache(LOG_PATH);
 
             CacheFS_destroy();
 //        std::cout << buf << std::endl;
