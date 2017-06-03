@@ -5,6 +5,11 @@
 // TODO: Take care in handling file open by shortcuts.
 // TODO: Check negative value in count parameter while reading.
 // TODO: Check Rounding down as described in the documentation for boundaries.
+// TODO: Check: If ask to read 0 offset, 4096 count, how many blocks it reads.
+// TODO: Check if in the print stat the line should end with a '.' or not.
+// TODO: Compare the log file format.
+// TODO: Check who close the log files.
+// TODO: Check compilation warnings.
 
 
 /**
@@ -103,6 +108,12 @@
 #define INITIAL_BLOCK_INDEX 0
 
 /**
+ * @def INITIAL_STAT_COUNTER 0
+ * @brief A Macro that sets the value of initial cache hit/miss stat counter.
+ */
+#define INITIAL_STAT_COUNTER 0
+
+/**
  * @def TMP_PATH "/tmp"
  * @brief A Macro that sets the path of the tmp directory.
  */
@@ -119,6 +130,18 @@
  * @brief A Macro that sets a separator in the log file.
  */
 #define LOG_SEPARATOR " "
+
+/**
+ * @def HIT_STAT_LOG "Hits number: "
+ * @brief A Macro that sets the line of hit stat in the log file.
+ */
+#define HIT_STAT_LOG "Hits number: "
+
+/**
+ * @def MISS_STAT_LOG "Misses number: "
+ * @brief A Macro that sets the line of miss stat in the log file.
+ */
+#define MISS_STAT_LOG "Misses number: "
 
 
 /*-----=  Type Definitions & Enums  =-----*/
@@ -216,6 +239,16 @@ int newBound = INITIAL_BOUNDARY;
  * @brief The bound index in the buffer cache for the old section.
  */
 int oldBound = INITIAL_BOUNDARY;
+
+/**
+ * @brief Counter for the number of cache hits in the library run.
+ */
+int cacheHitCounter = INITIAL_STAT_COUNTER;
+
+/**
+ * @brief Counter for the number of cache miss in the library run.
+ */
+int cacheMissCounter = INITIAL_STAT_COUNTER;
 
 /**
  * @brief The current cache policy algorithm used by this library.
@@ -344,6 +377,8 @@ static void resetLibraryData()
     numberOfBlocks = INITIAL_NUMBER_OF_BLOCKS;
     newBound = INITIAL_BOUNDARY;
     oldBound = INITIAL_BOUNDARY;
+    cacheHitCounter = INITIAL_STAT_COUNTER;
+    cacheMissCounter = INITIAL_STAT_COUNTER;
     openFiles = filesMap();
     blocks = blocksList();
 }
@@ -873,6 +908,8 @@ static int readHelper(int const file_id, void *buf, size_t const count,
             currentBuffer = blockIterator->buffer + offsetInBlock;
             // Update buffer by the cache hit policy of the selected algorithm.
             cacheHitPolicy(blockIterator);
+            // Update the cache hit counter.
+            cacheHitCounter++;
         }
         else
         {
@@ -901,6 +938,8 @@ static int readHelper(int const file_id, void *buf, size_t const count,
             currentBuffer = block.buffer + offsetInBlock;
             // Update the amount of blocks in the cache.
             activeBlocks++;
+            // Update the cache miss counter.
+            cacheMissCounter++;
         }
 
         // Copy data from the buffer block in the cache to the given buf.
@@ -927,6 +966,87 @@ static int readHelper(int const file_id, void *buf, size_t const count,
 
     std::cout << "Bytes Read: " << bytesRead << std::endl << std::endl;
     return bytesRead;
+}
+
+
+/*-----=  Print Logs Functions  =-----*/
+
+
+/**
+ * @brief Print the blocks in the given blocks container to the given file.
+ * @param logFile The file to write the data that is printed.
+ * @param blocksToPrint The blocks to print.
+ */
+static void printBlocks(std::ofstream &logFile, const blocksList &blocksToPrint)
+{
+    for (auto i = blocksToPrint.begin(); i != blocksToPrint.end(); ++i)
+    {
+        logFile << i->filePath << LOG_SEPARATOR << i->blockNumber << std::endl;
+    }
+}
+
+/**
+ * @brief Print current cache state according to LRU policy.
+ * @param logFile The file to write the data that is printed.
+ */
+static void printCacheLRU(std::ofstream &logFile)
+{
+    // Print the cache state by the order of the blocks in the list.
+    printBlocks(logFile, blocks);
+}
+
+/**
+ * @brief Print current cache state according to LFU policy.
+ * @param logFile The file to write the data that is printed.
+ */
+static void printCacheLFU(std::ofstream &logFile)
+{
+    // Print the cache state by order of reference counter.
+    blocksList blocksToPrint = blocks;
+    blocksToPrint.sort(refComparator);
+    blocksToPrint.reverse();
+    printBlocks(logFile, blocksToPrint);
+}
+
+/**
+ * @brief Print current cache state according to FBR policy.
+ * @param logFile The file to write the data that is printed.
+ */
+static void printCacheFBR(std::ofstream &logFile)
+{
+    // Print the cache state by the order of the blocks in the list.
+    printCacheLRU(logFile);
+}
+
+/**
+ * @brief Generic function that handles printing the blocks in the cache.
+ * @param logFile The file to write the data that is printed.
+ */
+static void printCachePolicy(std::ofstream &logFile)
+{
+    assert(logFile.good());
+    switch (cachePolicy)
+    {
+        case FBR:
+            printCacheFBR(logFile);
+            break;
+        case LFU:
+            printCacheLFU(logFile);
+            break;
+        case LRU:
+            printCacheLRU(logFile);
+            break;
+    }
+}
+
+/**
+ * @brief Writes the statistics of the CacheFS to the given log file.
+ * @param logFile The file to write the data that is printed.
+ */
+static void printStats(std::ofstream &logFile)
+{
+    logFile << HIT_STAT_LOG << cacheHitCounter << std::endl;
+    logFile << MISS_STAT_LOG << cacheMissCounter << std::endl;
 }
 
 
@@ -1077,58 +1197,6 @@ int CacheFS_pread(int file_id, void *buf, size_t count, off_t offset)
     return readHelper(file_id, buf, count, offset);
 }
 
-
-static void printBlocks(std::ofstream &logFile, const blocksList &blocksToPrint)
-{
-    for (auto i = blocksToPrint.begin(); i != blocksToPrint.end(); ++i)
-    {
-        logFile << i->filePath << LOG_SEPARATOR << i->blockNumber << std::endl;
-    }
-}
-
-static void printCacheLRU(std::ofstream &logFile)
-{
-    // Print the cache state by the order of the blocks in the list.
-    printBlocks(logFile, blocks);
-}
-
-static void printCacheLFU(std::ofstream &logFile)
-{
-    // Print the cache state by order of reference counter.
-    blocksList blocksToPrint = blocks;
-    blocksToPrint.sort(refComparator);
-    blocksToPrint.reverse();
-    printBlocks(logFile, blocksToPrint);
-}
-
-
-static void printCacheFBR(std::ofstream &logFile)
-{
-    // Print the cache state by the order of the blocks in the list.
-    printCacheLRU(logFile);
-}
-
-/**
- * @brief Generic function that handles printing the blocks in the cache.
- * @param logFile Iterator to the block that caused the cache hit.
- */
-static void printCachePolicy(std::ofstream &logFile)
-{
-    assert(logFile.good());
-    switch (cachePolicy)
-    {
-        case FBR:
-            printCacheFBR(logFile);
-            break;
-        case LFU:
-            printCacheLFU(logFile);
-            break;
-        case LRU:
-            printCacheLRU(logFile);
-            break;
-    }
-}
-
 /**
  * @brief This function writes the current state of the cache to a file.
  *        The function writes a line for every block that was used in the cache
@@ -1159,8 +1227,30 @@ int CacheFS_print_cache(const char *log_path)
     return SUCCESS_STATE;
 }
 
-// TODO: Doxygen.
+/**
+ * @brief This function writes the statistics of the CacheFS to a file.
+ *        This function writes exactly the following lines:
+ *          Hits number: HITS_NUM.
+ *          Misses number: MISS_NUM.
+ *        Where HITS_NUM is the number of cache-hits, and MISS_NUM is the
+ *        number of cache-misses. A cache miss counts the number of
+ *        fetched blocks from the disk. A cache hit counts the number of
+ *        required blocks that were already stored in the cache
+ *        (and therefore we didn't fetch them from the disk again).
+ * @param log_path A path of the log file. A valid path is either: a path to an
+ *                 existing log file or a path to a new file
+ *                 (under existing directory).
+ * @return 0 in case of success, -1 in case of failure.
+ */
 int CacheFS_print_stat(const char *log_path)
 {
+    // Open log file stream.
+    std::ofstream logFile(log_path, std::ios_base::app | std::ios_base::out);
+    if (logFile.fail())
+    {
+        return FAILURE_STATE;
+    }
+    // Print cache state.
+    printStats(logFile);
     return SUCCESS_STATE;
 }

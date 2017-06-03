@@ -1,0 +1,4 @@
+#!/bin/bash
+tar xf Test1.tar
+python3 Test1.py
+rm -rf BufferOutputResult CacheLogResult CacheFS.h Makefile StatLogResult Test1.cpp Test1.py TheBoyWhoLived

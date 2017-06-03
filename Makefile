@@ -30,9 +30,9 @@ clean:
 
 
 # Valgrind
-Valgrind: CacheFS FBRTest.cpp
-	$(CXX) -g -Wall -std=c++11 FBRTest.cpp -L. CacheFS.a -o Valgrind
-	valgrind --leak-check=full --show-possibly-lost=yes --show-reachable=yes --undef-value-errors=yes ./Valgrind
+Valgrind: CacheFS Test1.cpp
+	$(CXX) -g -Wall -std=c++11 Test1.cpp -L. CacheFS.a -o Valgrind
+	valgrind --leak-check=full --show-possibly-lost=yes --show-reachable=yes --track-origins=yes --undef-value-errors=yes ./Valgrind
 	-rm -vf *.o *.a Valgrind
 
 
