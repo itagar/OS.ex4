@@ -2,10 +2,8 @@
 // TODO: Makefile
 // TODO: README
 // TODO: Answers + add Answers.pdf to Makefile of tar
-// TODO: Take care in handling file open by shortcuts.
 // TODO: Check negative value in count parameter while reading.
 // TODO: Check Rounding down as described in the documentation for boundaries.
-// TODO: Check: If ask to read 0 offset, 4096 count, how many blocks it reads.
 // TODO: Check if in the print stat the line should end with a '.' or not.
 // TODO: Compare the log file format.
 // TODO: Check who close the log files.

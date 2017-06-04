@@ -1,0 +1,4 @@
+#!/bin/bash
+tar xf Tests.tar
+python3 Tests.py
+rm -rf CacheFS.h Makefile *.cpp *.py FilesToRead/ ResultFiles/
