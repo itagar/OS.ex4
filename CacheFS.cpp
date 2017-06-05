@@ -1222,6 +1222,12 @@ int CacheFS_print_cache(const char *log_path)
     }
     // Print cache state.
     printCachePolicy(logFile);
+    // Close the Stream.
+    logFile.close();
+    if (logFile.fail())
+    {
+        return FAILURE_STATE;
+    }
     return SUCCESS_STATE;
 }
 
@@ -1250,5 +1256,11 @@ int CacheFS_print_stat(const char *log_path)
     }
     // Print cache state.
     printStats(logFile);
+    // Close the Stream.
+    logFile.close();
+    if (logFile.fail())
+    {
+        return FAILURE_STATE;
+    }
     return SUCCESS_STATE;
 }
