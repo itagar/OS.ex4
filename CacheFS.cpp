@@ -2,10 +2,8 @@
 // TODO: Makefile
 // TODO: README
 // TODO: Answers + add Answers.pdf to Makefile of tar
-// TODO: Check negative value in count parameter while reading.
-// TODO: Check Rounding down as described in the documentation for boundaries.
-// TODO: Check who close the log files.
 // TODO: Check compilation warnings.
+// TODO: Check FBR values between 0 to 1.
 
 
 /**
@@ -1043,8 +1041,8 @@ static void printCachePolicy(std::ofstream &logFile)
  */
 static void printStats(std::ofstream &logFile)
 {
-    logFile << HIT_STAT_LOG << cacheHitCounter << std::endl;
-    logFile << MISS_STAT_LOG << cacheMissCounter << std::endl;
+    logFile << HIT_STAT_LOG << cacheHitCounter << "." << std::endl;
+    logFile << MISS_STAT_LOG << cacheMissCounter << "." << std::endl;
 }
 
 
