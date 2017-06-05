@@ -4,8 +4,6 @@
 // TODO: Answers + add Answers.pdf to Makefile of tar
 // TODO: Check negative value in count parameter while reading.
 // TODO: Check Rounding down as described in the documentation for boundaries.
-// TODO: Check if in the print stat the line should end with a '.' or not.
-// TODO: Compare the log file format.
 // TODO: Check who close the log files.
 // TODO: Check compilation warnings.
 
@@ -33,6 +31,8 @@
 #include <list>
 #include <algorithm>
 #include <fstream>
+#include <stdlib.h>
+#include <malloc.h>
 #include "CacheFS.h"
 
 
