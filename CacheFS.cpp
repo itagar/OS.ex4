@@ -842,9 +842,6 @@ static void updateSections()
 static int readHelper(int const file_id, void *buf, size_t const count,
                       off_t const offset)
 {
-    std::cout << "/*=-- Current Read Data --=*/" << std::endl;
-    std::cout << "Requested to read " << count << " bytes starting from " << offset << " offset." << std::endl;
-
     // Get data of the file to read.
     const std::string filePath = openFiles[file_id];
     const off_t fileSize = lseek(file_id, 0, SEEK_END);
@@ -863,13 +860,6 @@ static int readHelper(int const file_id, void *buf, size_t const count,
     // Setup the read data.
     ReadData readData;
     setupReadData(readData, fileSize, bytesToRead, offset);
-    std::cout << "-READ DATA- " << std::endl;
-    std::cout << "File Size: " << readData.fileSize << std::endl;
-    std::cout << "Start Block: " << readData.startBlock << std::endl;
-    std::cout << "End Block: " << readData.endBlock << std::endl;
-    std::cout << "Start Remainder: " << readData.startRemainder << std::endl;
-    std::cout << "End Remainder: " << readData.endRemainder << std::endl;
-    std::cout << "Blocks to Read: " << readData.blocksToRead << std::endl;
 
     // The current number of block in the file to read.
     size_t currentBlockNumber = readData.startBlock;
@@ -881,16 +871,10 @@ static int readHelper(int const file_id, void *buf, size_t const count,
         // Calculate the current amount of bytes to read from this block.
         size_t currentCount = calculateCurrentCount(bytesToRead, offsetInBlock);
 
-        std::cout << "Current Block Number: " << currentBlockNumber << std::endl;
-        std::cout << "Bytes to Read: " << bytesToRead << std::endl;
-        std::cout << "Current Offset: " << offsetInBlock << std::endl;
-        std::cout << "Current Count: " << currentCount << std::endl;
-
         // Check if this block is already in the cache buffer.
         auto blockIterator = findBlock(filePath, currentBlockNumber);
         if (blockIterator != blocks.end())
         {
-            std::cout << "Found This Block in the Cache!" << std::endl;
             // Block is already in the buffer cache so we set current
             // buffer accordingly.
             currentBuffer = blockIterator->buffer + offsetInBlock;
@@ -910,7 +894,6 @@ static int readHelper(int const file_id, void *buf, size_t const count,
                 // to the selected policy.
                 auto blockToRemove = removeBlockPolicy();
                 assert(blockToRemove != blocks.end());
-                std::cout << "Removing Block: <" << blockToRemove->blockNumber << "," << blockToRemove->referenceCounter << "," << blockToRemove->section << ">" << std::endl;
                 removeBlock(blockToRemove);
             }
 
@@ -943,16 +926,8 @@ static int readHelper(int const file_id, void *buf, size_t const count,
             updateSections();
         }
         currentBlockNumber++;
-
-        std::cout << "--Blocks in the cache--" << std::endl;
-        for (auto j = blocks.begin(); j != blocks.end(); ++j)
-        {
-            std::cout << "<" <<  j->blockNumber << "," << j->referenceCounter << "," << j->section << ">  ";
-        }
-        std::cout << std::endl;
     }
 
-    std::cout << "Bytes Read: " << bytesRead << std::endl << std::endl;
     return bytesRead;
 }
 
