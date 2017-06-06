@@ -787,7 +787,7 @@ static size_t getBytesToRead(size_t const count, off_t const offset,
     }
     // If the requested amount of data to read exceeds the actual file size
     // we read only the available data.
-    if (offset + count > fileSize)
+    if (offset + count > (size_t)fileSize)
     {
         size_t overhead = (offset + count) - fileSize;
         return count - overhead;
@@ -934,7 +934,7 @@ static int readHelper(int const file_id, void *buf, size_t const count,
         memcpy(buf, currentBuffer, currentCount);
 
         // Update data for the next block reading.
-        buf += currentCount;
+        buf = (char *)buf + currentCount;
         bytesRead += currentCount;
         bytesToRead -= currentCount;
         offsetInBlock = (offsetInBlock + currentCount) % blockSize;
