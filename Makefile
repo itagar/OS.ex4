@@ -27,20 +27,3 @@ tar:
 # Other Targets
 clean:
 	-rm -vf *.o *.a *.tar
-
-
-# Valgrind
-Valgrind: CacheFS Test1.cpp
-	$(CXX) -g -Wall -std=c++11 Test1.cpp -L. CacheFS.a -o Valgrind
-	valgrind --leak-check=full --show-possibly-lost=yes --show-reachable=yes --track-origins=yes --undef-value-errors=yes ./Valgrind
-	-rm -vf *.o *.a Valgrind
-
-
-# LRU Test
-LRU: CacheFS LRUTest.cpp
-	cp TheBoyWhoLived /tmp/TheBoyWhoLived
-	$(CXX) $(CXXFLAGS) LRUTest.cpp -o LRUTest.o
-	$(CXX) LRUTest.o -L. CacheFS.a -o LRUTest
-	./LRUTest
-	-rm -rvf *.o *.a LRUTest /tmp/TheBoyWhoLived
-
