@@ -504,13 +504,6 @@ Average Wait Time:
 \end_layout
 
 \end_deeper
-\begin_layout Standard
-\begin_inset Newpage pagebreak
-\end_inset
-
-
-\end_layout
-
 \end_deeper
 \begin_layout Enumerate
 Consider the case of 
@@ -561,6 +554,15 @@ Clock-Algorithm
 we saw in class.
 \end_layout
 
+\begin_deeper
+\begin_layout Standard
+\begin_inset Newpage pagebreak
+\end_inset
+
+
+\end_layout
+
+\end_deeper
 \begin_layout Enumerate
 \begin_inset ERT
 status open
@@ -739,15 +741,6 @@ hits
 .
 \end_layout
 
-\begin_deeper
-\begin_layout Standard
-\begin_inset Newpage pagebreak
-\end_inset
-
-
-\end_layout
-
-\end_deeper
 \begin_layout Itemize
 
 \series bold
@@ -859,18 +852,116 @@ status open
 \end_layout
 
 \begin_layout Enumerate
-\begin_inset ERT
-status open
-
-\begin_layout Plain Layout
-
-\end_layout
-
+First note that accessing byte 40,000 requires using 
+\emph on
+single indirect
+\emph default
+ because using 
+\emph on
+direct pointers
+\emph default
+ can hold only for 
+\begin_inset Formula $\left(10\times2,048\right)=20,480$
 \end_inset
 
-
+ bytes.
+ The access stages are described as follows:
 \end_layout
 
+\begin_deeper
+\begin_layout Enumerate
+Access the 
+\emph on
+root
+\emph default
+ inode.
+\end_layout
+
+\begin_layout Enumerate
+Access the 
+\emph on
+root 
+\emph default
+directory guide block.
+\end_layout
+
+\begin_layout Enumerate
+Access the 
+\emph on
+os
+\emph default
+ inode.
+\end_layout
+
+\begin_layout Enumerate
+Access the 
+\emph on
+os 
+\emph default
+directory guide block.
+\end_layout
+
+\begin_layout Enumerate
+Access the 
+\emph on
+readme.txt
+\emph default
+ inode.
+\end_layout
+
+\begin_layout Enumerate
+Access the block pointed by the 
+\emph on
+single indirect
+\emph default
+.
+\end_layout
+
+\begin_layout Enumerate
+Access to 
+\series bold
+read 
+\series default
+from the 
+\emph on
+readme.txt 
+\emph default
+block that contains byte 40,000.
+\end_layout
+
+\begin_layout Enumerate
+Access to 
+\series bold
+write
+\series default
+ to the 
+\emph on
+readme.txt 
+\emph default
+block that contains byte 40,000.
+\end_layout
+
+\begin_layout Enumerate
+Access to 
+\series bold
+update
+\series default
+ the 
+\emph on
+readme.txt
+\emph default
+ inode.
+\end_layout
+
+\begin_layout Standard
+Overall: 
+\series bold
+9 Disk Access
+\series default
+.
+\end_layout
+
+\end_deeper
 \begin_layout Enumerate
 \begin_inset ERT
 status open
@@ -884,6 +975,53 @@ status open
 
 \end_layout
 
+\begin_deeper
+\begin_layout Enumerate
+
+\family typewriter
+seek
+\family default
+ will cause an interrupt to the operating system, i.e.
+ 
+\emph on
+trap 
+\emph default
+because it is a 
+\emph on
+system call
+\emph default
+.
+\end_layout
+
+\begin_layout Enumerate
+
+\family typewriter
+read
+\family default
+ will cause an interrupt to the operating system, i.e.
+ 
+\emph on
+trap 
+\emph default
+because it is a 
+\emph on
+system call
+\emph default
+.
+\end_layout
+
+\begin_layout Enumerate
+The actual reading will cause an 
+\emph on
+hardware interrupt 
+\emph default
+because to operating system needs to access to the disk in order to read
+ the single byte from the file.
+ (Recall that the operating system can communicate directly with the main
+ memory but not with the disk).
+\end_layout
+
+\end_deeper
 \begin_layout Enumerate
 \begin_inset ERT
 status open
@@ -897,5 +1035,130 @@ status open
 
 \end_layout
 
+\begin_deeper
+\begin_layout Enumerate
+We will describe a 
+\emph on
+Multi-Level Feedback Queue
+\emph default
+ for this problem as follows:
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+Number of queues is 2 and denote the queues by 
+\begin_inset Formula $Q_{1},Q_{2}$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Enumerate
+The scheduling algorithms are 
+\emph on
+Round-Robin 
+\emph default
+for 
+\begin_inset Formula $Q_{1}$
+\end_inset
+
+ and 
+\emph on
+SRTF
+\emph default
+ for 
+\begin_inset Formula $Q_{2}$
+\end_inset
+
+.
+ The quantum of 
+\begin_inset Formula $Q_{1}$
+\end_inset
+
+ will be 1.
+\end_layout
+
+\begin_layout Enumerate
+Every new task will enter 
+\begin_inset Formula $Q_{1}$
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Enumerate
+All the tasks in 
+\begin_inset Formula $Q_{1}$
+\end_inset
+
+ that did not finished their run will be transfered to 
+\begin_inset Formula $Q_{2}$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Enumerate
+If we run a task in 
+\begin_inset Formula $Q_{2}$
+\end_inset
+
+ and a new task arrived (according to our definition it will arrive 
+\begin_inset Formula $Q_{1}$
+\end_inset
+
+) we will switch and run the tasks in 
+\begin_inset Formula $Q_{1}$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+In this implementation all the tasks of type 
+\begin_inset Formula $a$
+\end_inset
+
+ will not wait at all.
+ The tasks of type 
+\begin_inset Formula $b$
+\end_inset
+
+ is handled by 
+\emph on
+SRTF
+\emph default
+ which aims to minimize the waiting time.
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+In our algorithm we use preemptions from 
+\begin_inset Formula $Q_{1}$
+\end_inset
+
+ to 
+\begin_inset Formula $Q_{2}$
+\end_inset
+
+ after a single quantum, also we preempt 
+\begin_inset Formula $b$
+\end_inset
+
+ tasks from 
+\begin_inset Formula $Q_{2}$
+\end_inset
+
+ if a new task has arrived.
+ So our algorithm performs multiple context-switchs which causes more overhead.
+ We could use 
+\emph on
+FCFS
+\emph default
+ for example to minimize the overhead.
+\end_layout
+
+\end_deeper
 \end_body
 \end_document
