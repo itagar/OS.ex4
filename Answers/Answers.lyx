@@ -1,0 +1,901 @@
+#LyX 2.2 created this file. For more info see http://www.lyx.org/
+\lyxformat 508
+\begin_document
+\begin_header
+\save_transient_properties true
+\origin unavailable
+\textclass article
+\begin_preamble
+\usepackage{enumerate}
+\end_preamble
+\use_default_options true
+\maintain_unincluded_children false
+\language english
+\language_package default
+\inputencoding auto
+\fontencoding global
+\font_roman "default" "default"
+\font_sans "default" "default"
+\font_typewriter "default" "default"
+\font_math "auto" "auto"
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100 100
+\font_tt_scale 100 100
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\paperfontsize default
+\spacing single
+\use_hyperref false
+\papersize default
+\use_geometry true
+\use_package amsmath 1
+\use_package amssymb 1
+\use_package cancel 1
+\use_package esint 1
+\use_package mathdots 1
+\use_package mathtools 1
+\use_package mhchem 1
+\use_package stackrel 1
+\use_package stmaryrd 1
+\use_package undertilde 1
+\cite_engine basic
+\cite_engine_type default
+\biblio_style plain
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date true
+\justification true
+\use_refstyle 1
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\leftmargin 1cm
+\rightmargin 1cm
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\quotes_language english
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Standard
+\align center
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+rule{
+\backslash
+textwidth}{1pt}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\align center
+
+\series bold
+\size largest
+Operating Systems - Exercise 4
+\end_layout
+
+\begin_layout Standard
+\align center
+
+\series bold
+\size larger
+A Cache File System: Answers
+\end_layout
+
+\begin_layout Standard
+\align center
+
+\size large
+Itai Tagar - 305392508 -
+\size default
+ 
+\size large
+itagar
+\size default
+
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+rule{
+\backslash
+textwidth}{1pt}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\align center
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+bigskip
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+bigskip
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Part
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Enumerate
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+
+\series bold
+\bar under
+Round Robin (RR) with quantum = 2:
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+Gantt Chart:
+\end_layout
+
+\begin_layout Standard
+\align center
+\begin_inset Graphics
+	filename ex4Figures/RR.png
+	scale 40
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Enumerate
+Turnaround Time: 
+\begin_inset Formula $\left(23+\left(12-2\right)+\left(6-4\right)+\left(21-4\right)+\left(9-7\right)\right)/5=\boldsymbol{11.4}$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Enumerate
+Average Wait Time: 
+\begin_inset Formula $\left(13+8+0+10+1\right)=\boldsymbol{6.4}$
+\end_inset
+
+
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+
+\size footnotesize
+P1 Wait Time: 
+\begin_inset Formula $\left(9-2\right)+\left(14-11\right)+\left(18-16\right)+\left(21-20\right)=13$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+
+\size footnotesize
+P2 Wait Time: 
+\begin_inset Formula $\left(12-4\right)=8$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+
+\size footnotesize
+P3 Wait Time: 
+\begin_inset Formula $0$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+
+\size footnotesize
+P4 Wait Time: 
+\begin_inset Formula $\left(6-4\right)+\left(12-8\right)+\left(16-14\right)+\left(20-18\right)=10$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+
+\size footnotesize
+P5 Wait Time: 
+\begin_inset Formula $\left(8-7\right)=1$
+\end_inset
+
+
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+bigskip
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_deeper
+\end_deeper
+\begin_layout Enumerate
+
+\series bold
+\bar under
+First Come First Serve (FCFS):
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+Gantt Chart:
+\end_layout
+
+\begin_deeper
+\begin_layout Standard
+\align center
+\begin_inset Graphics
+	filename ex4Figures/FCFS.png
+	scale 40
+
+\end_inset
+
+
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+Turnaround Time: 
+\begin_inset Formula $\left(10+\left(13-2\right)+\left(15-4\right)+\left(22-4\right)+\left(23-7\right)\right)/5=\boldsymbol{13.2}$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Enumerate
+Average Wait Time: 
+\begin_inset Formula $\left(0+\left(10-2\right)+\left(13-4\right)+\left(15-4\right)+\left(22-7\right)\right)=\boldsymbol{8.6}$
+\end_inset
+
+
+\size footnotesize
+
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+bigskip
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+
+\series bold
+\bar under
+Shortest Remaining Time First (SRTF):
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+Gantt Chart:
+\end_layout
+
+\begin_deeper
+\begin_layout Standard
+\align center
+\begin_inset Graphics
+	filename ex4Figures/SRTF.png
+	scale 40
+
+\end_inset
+
+
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+Turnaround Time: 
+\begin_inset Formula $\left(23+\left(5-2\right)+\left(7-4\right)+\left(15-4\right)+\left(8-7\right)\right)/5=\boldsymbol{8.2}$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Enumerate
+Average Wait Time: 
+\begin_inset Formula $\left(\left(15-2\right)+0+\left(5-4\right)+\left(8-4\right)+0\right)=\boldsymbol{3.6}$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Newpage pagebreak
+\end_inset
+
+
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+
+\series bold
+\bar under
+Priority Scheduling:
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+Gantt Chart:
+\end_layout
+
+\begin_deeper
+\begin_layout Standard
+\align center
+\begin_inset Graphics
+	filename ex4Figures/PRIORITY.png
+	scale 40
+
+\end_inset
+
+
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+Turnaround Time: 
+\begin_inset Formula $\left(10+\left(13-2\right)+\left(22-4\right)+\left(20-4\right)+\left(23-7\right)\right)/5=\boldsymbol{14.2}$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Enumerate
+Average Wait Time: 
+\begin_inset Formula $\left(0+\left(10-2\right)+\left(20-4\right)+\left(13-4\right)+\left(22-7\right)\right)=\boldsymbol{9.6}$
+\end_inset
+
+
+\size footnotesize
+
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+bigskip
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+
+\series bold
+\bar under
+Priority Scheduling with preemption:
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+Gantt Chart:
+\end_layout
+
+\begin_deeper
+\begin_layout Standard
+\align center
+\begin_inset Graphics
+	filename ex4Figures/PRIORITY-PRE.png
+	scale 40
+
+\end_inset
+
+
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+Turnaround Time: 
+\begin_inset Formula $\left(22+\left(5-2\right)+\left(14-4\right)+\left(12-4\right)+\left(23-7\right)\right)/5=\boldsymbol{11.8}$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Enumerate
+Average Wait Time: 
+\begin_inset Formula $\left(\left(14-2\right)+0+\left(12-4\right)+\left(5-4\right)+\left(22-7\right)\right)=\boldsymbol{7.2}$
+\end_inset
+
+
+\end_layout
+
+\end_deeper
+\begin_layout Standard
+\begin_inset Newpage pagebreak
+\end_inset
+
+
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+Consider the case of 
+\emph on
+Cache Miss
+\emph default
+.
+ In such case there will be an access to the main memory, there we will
+ see that the required block is not in our cache and we will have to access
+ the disk to get to our block and then store it in our cache.
+ Note that in this case we will have one access to the main memory and one
+ access to the disk, thus it takes slightly more time then accessing the
+ disk directly.
+\end_layout
+
+\begin_layout Enumerate
+It will be much harder to manage the different algorithms that we used in
+ our 
+\emph on
+Blocks-Cache
+\emph default
+ for swapping 
+\emph on
+pages
+\emph default
+ because managing the 
+\emph on
+Blocks-Cache
+\emph default
+ is done by the operating system and there is plenty of data it can hold
+ and use in order to manage the sophisticated algorithms (such as reference
+ counters and order of use).
+ Swapping pages is done by the hardware itself (
+\emph on
+Memory Management Unit
+\emph default
+) and the hardware is unable to hold all of the data that the operating
+ system is using in our algorithms.
+ The hardware can use a single bit (The 
+\begin_inset Formula $R$
+\end_inset
+
+ bit as we saw in class) which indicates a reference and by that it can
+ manage the 
+\emph on
+Clock-Algorithm 
+\emph default
+we saw in class.
+\end_layout
+
+\begin_layout Enumerate
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+
+\series bold
+LRU is better than LFU:
+\series default
+ 
+\begin_inset Newline newline
+\end_inset
+
+When each sequence of blocks is read for some interval thus the most recently
+ used block will probably be requested again.
+\begin_inset Newline newline
+\end_inset
+
+Consider a cache of size 
+\begin_inset Formula $2$
+\end_inset
+
+ and consider reading a single file of size of 3 blocks.
+ Reading the file's blocks is in the following order:
+\begin_inset Formula 
+\[
+1,1,1,2,3,2,3,2,3,2,3
+\]
+
+\end_inset
+
+Using LRU we will read the first block from the file into the cache (in
+ the first time there will be a 
+\emph on
+miss
+\emph default
+ and in the other two there will be a 
+\emph on
+hit
+\emph default
+).
+ Then we will read the second block to the cache.
+ Now the cache is full and we are trying to read the third block, according
+ to LRU we will remove block number 1 from the cache and replace it with
+ block number 3.
+ From now on all of our reads will be
+\emph on
+ hits
+\emph default
+.
+ So overall we will have 3 
+\emph on
+miss
+\emph default
+ and 8 
+\emph on
+hits
+\emph default
+.
+\begin_inset Newline newline
+\end_inset
+
+Using LFU will do the same until the cache is full.
+ When the cache is full LFU will see that block number 1 has more references
+ than block number 2 thus it will remove it and replace it with block number
+ 3.
+ The same thing will happen to block number 3 and so on.
+ So overall we will have 7 
+\emph on
+miss
+\emph default
+ and 2 
+\emph on
+hits
+\emph default
+.
+\end_layout
+
+\begin_layout Itemize
+
+\series bold
+LFU is better than LRU:
+\begin_inset Newline newline
+\end_inset
+
+
+\series default
+When we have some block that is used interchangebly between other reads
+ but it is often requested all along the enture read process.
+\begin_inset Newline newline
+\end_inset
+
+Consider a cache of size 
+\begin_inset Formula $2$
+\end_inset
+
+ and consider reading a single file of size of 7 blocks.
+ Reading the file's blocks is in the following order:
+\begin_inset Formula 
+\[
+1,1,1,2,3,1,4,5,1,6,7,1,1,1
+\]
+
+\end_inset
+
+Using LRU we will read the first block from the file into the cache (in
+ the first time there will be a 
+\emph on
+miss
+\emph default
+ and in the other two there will be a 
+\emph on
+hit
+\emph default
+).
+ Then we will read the second block to the cache.
+ Now the cache is full and we are trying to read the third block, according
+ to LRU we will remove block number 1 from the cache and replace it with
+ block number 3.
+ Next we are back to block number 1 but we will have a 
+\emph on
+miss
+\emph default
+ and we will replace it with block number 2.
+ Same for reading blocks 4 and 5, we will end up with a full cache that
+ contains 
+\begin_inset Formula $4,5$
+\end_inset
+
+ and we will return to blcok 1 and again we will have a 
+\emph on
+miss.
+
+\emph default
+ So overall we will have 10 
+\emph on
+miss
+\emph default
+ and 4 
+\emph on
+hits
+\emph default
+.
+\begin_inset Newline newline
+\end_inset
+
+Using LFU will do the same until the cache is full.
+ When the cache is full LFU will see that blocks 1 has more references than
+ block number 2 thus it will remove it and replace it with block number
+ 3.
+ When block 1 request will come up again we will have a 
+\emph on
+hit
+\emph default
+.
+ The same will be for all of our next reads and we will end up that block
+ number 1 will stay in the cache all the time.
+ So overall we will have 6 
+\emph on
+miss
+\emph default
+ and 7 
+\emph on
+hits
+\emph default
+.
+\end_layout
+
+\begin_deeper
+\begin_layout Standard
+\begin_inset Newpage pagebreak
+\end_inset
+
+
+\end_layout
+
+\end_deeper
+\begin_layout Itemize
+
+\series bold
+LFU and LRU are both poor:
+\begin_inset Newline newline
+\end_inset
+
+
+\series default
+When we read a file sequentially for several times.
+ 
+\begin_inset Newline newline
+\end_inset
+
+Consider a cache of size 
+\begin_inset Formula $4$
+\end_inset
+
+ and consider reading a single file of size of 5 blocks.
+ Reading the file's blocks is in the following order:
+\begin_inset Formula 
+\[
+1,2,3,4,5,1,2,3,4,5,1,2,3,4,5
+\]
+
+\end_inset
+
+Using LRU we will read blocks 
+\begin_inset Formula $1-4$
+\end_inset
+
+ and then the cache will be full.
+ Now when we try to read block number 5 according to LRU we will remove
+ block number 1 from the cache and replace it with block number 5.
+ For block number 1 again we will have a 
+\emph on
+miss
+\emph default
+ we will have to remove block number 2 from the cache.
+ This cyclic replacement is going on for all the rest of the read requests
+ and 
+\series bold
+all
+\series default
+ of the requests will be 
+\emph on
+miss
+\emph default
+.
+ So overall we will have 15 
+\emph on
+miss
+\emph default
+ and 0 
+\emph on
+hits
+\emph default
+.
+\begin_inset Newline newline
+\end_inset
+
+Using LFU is considered to do the same as LRU because all the references
+ are equal (equals 1) before we are trying to remove a block (at any time)
+ and so in the worst case we will choose to remove the least recently used
+ block.
+ So we are having the same performance as LRU.
+\end_layout
+
+\begin_deeper
+\begin_layout Standard
+
+\emph on
+A better algorithm for this scenario will be 
+\emph default
+MRU
+\emph on
+ for example.
+\end_layout
+
+\end_deeper
+\end_deeper
+\begin_layout Enumerate
+The 
+\emph on
+new section 
+\emph default
+controls the incrementing reference counts to try and solve the following
+ problem: In LFU there is an increment of the reference counter each time
+ a block is referenced, so there can be a situation where several blocks
+ are relatively infrequently referenced overall, and yet when they are reference
+d, due to locality there are short intervals of repeated re-references,
+ thus building up high reference counts.
+ After such an interval is over, the high reference count is misleading
+ because it is due to locality, and cannot be used to estimate the probability
+ that such a block will be re-referenced following the end of this interval.
+\end_layout
+
+\begin_layout Part
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Enumerate
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Enumerate
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Enumerate
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_body
+\end_document

@@ -1,6 +1,6 @@
 CXX= g++
 CXXFLAGS= -c -Wall -std=c++11 -DNDEBUG
-CODEFILES= ex4.tar CacheFS.cpp Makefile README
+CODEFILES= ex4.tar CacheFS.cpp Makefile README Answers.pdf
 LIBOBJECTS= CacheFS.o
 
 
