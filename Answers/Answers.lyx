@@ -219,7 +219,7 @@ Gantt Chart:
 
 \begin_layout Enumerate
 Turnaround Time: 
-\begin_inset Formula $\left(23+\left(12-2\right)+\left(6-4\right)+\left(21-4\right)+\left(9-7\right)\right)/5=\boldsymbol{11.4}$
+\begin_inset Formula $\left(22+\left(11-2\right)+\left(8-4\right)+\left(23-4\right)+\left(14-7\right)\right)/5=\boldsymbol{12.2}$
 \end_inset
 
 
@@ -227,7 +227,7 @@ Turnaround Time:
 
 \begin_layout Enumerate
 Average Wait Time: 
-\begin_inset Formula $\left(13+8+0+10+1\right)=\boldsymbol{6.4}$
+\begin_inset Formula $\left(12+6+2+12+6\right)/5=\boldsymbol{7.6}$
 \end_inset
 
 
@@ -238,7 +238,7 @@ Average Wait Time:
 
 \size footnotesize
 P1 Wait Time: 
-\begin_inset Formula $\left(9-2\right)+\left(14-11\right)+\left(18-16\right)+\left(21-20\right)=13$
+\begin_inset Formula $\left(4-2\right)+\left(11-6\right)+\left(16-13\right)+\left(20-18\right)=12$
 \end_inset
 
 
@@ -248,7 +248,7 @@ P1 Wait Time:
 
 \size footnotesize
 P2 Wait Time: 
-\begin_inset Formula $\left(12-4\right)=8$
+\begin_inset Formula $\left(10-4\right)=6$
 \end_inset
 
 
@@ -258,7 +258,7 @@ P2 Wait Time:
 
 \size footnotesize
 P3 Wait Time: 
-\begin_inset Formula $0$
+\begin_inset Formula $\left(6-4\right)=2$
 \end_inset
 
 
@@ -268,7 +268,7 @@ P3 Wait Time:
 
 \size footnotesize
 P4 Wait Time: 
-\begin_inset Formula $\left(6-4\right)+\left(12-8\right)+\left(16-14\right)+\left(20-18\right)=10$
+\begin_inset Formula $\left(8-4\right)+\left(14-10\right)+\left(18-16\right)+\left(22-20\right)=12$
 \end_inset
 
 
@@ -278,7 +278,7 @@ P4 Wait Time:
 
 \size footnotesize
 P5 Wait Time: 
-\begin_inset Formula $\left(8-7\right)=1$
+\begin_inset Formula $\left(13-7\right)=6$
 \end_inset
 
 
@@ -334,7 +334,7 @@ Turnaround Time:
 
 \begin_layout Enumerate
 Average Wait Time: 
-\begin_inset Formula $\left(0+\left(10-2\right)+\left(13-4\right)+\left(15-4\right)+\left(22-7\right)\right)=\boldsymbol{8.6}$
+\begin_inset Formula $\left(0+\left(10-2\right)+\left(13-4\right)+\left(15-4\right)+\left(22-7\right)\right)/5=\boldsymbol{8.6}$
 \end_inset
 
 
@@ -391,7 +391,7 @@ Turnaround Time:
 
 \begin_layout Enumerate
 Average Wait Time: 
-\begin_inset Formula $\left(\left(15-2\right)+0+\left(5-4\right)+\left(8-4\right)+0\right)=\boldsymbol{3.6}$
+\begin_inset Formula $\left(\left(15-2\right)+0+\left(5-4\right)+\left(8-4\right)+0\right)/5=\boldsymbol{3.6}$
 \end_inset
 
 
@@ -440,7 +440,7 @@ Turnaround Time:
 
 \begin_layout Enumerate
 Average Wait Time: 
-\begin_inset Formula $\left(0+\left(10-2\right)+\left(20-4\right)+\left(13-4\right)+\left(22-7\right)\right)=\boldsymbol{9.6}$
+\begin_inset Formula $\left(0+\left(10-2\right)+\left(20-4\right)+\left(13-4\right)+\left(22-7\right)\right)/5=\boldsymbol{9.6}$
 \end_inset
 
 
@@ -497,7 +497,7 @@ Turnaround Time:
 
 \begin_layout Enumerate
 Average Wait Time: 
-\begin_inset Formula $\left(\left(14-2\right)+0+\left(12-4\right)+\left(5-4\right)+\left(22-7\right)\right)=\boldsymbol{7.2}$
+\begin_inset Formula $\left(\left(14-2\right)+0+\left(12-4\right)+\left(5-4\right)+\left(22-7\right)\right)/5=\boldsymbol{7.2}$
 \end_inset
 
 
