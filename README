@@ -4,206 +4,37 @@ EX: 4
 
 
 FILES:
-	MapReduceFramework.cpp  - The MapReduce Framework implementation.
-	Thread.h                - A wrapper class for a Thread in the Framework.
-	MapThread.h             - A wrapper class for a Map Thread in the Framework.
-	ReduceThread.h          - A wrapper class for a Reduce Thread in the Framework.
-	Search.cpp              - The program which perform search using the Framework.
+	CacheFS.cpp             - The Cache File System Library implementation.
 	Makefile                - Makefile for this project.
+	Answers.pdf             - Answers for the theoretical part.
 	README                  - This file.
 
 
 REMARKS:
-Design of the Search program:
-    In the Search program I divided the work between the Map and Reduce as follows:
-    The Map function is given a directory and the substring and it then search
-    in the files in the given directory the substring. Map is calls Emit2 of every
-    file name in this directory which satisfies the filter condition (in our case is
-    that the name contains the substring). So the Map helps the Search program
-    to divide it's work on the user input into several tasks where each task
-    is dedicated to one argument (one directory path) from the program arguments.
-    The Reduce function is fed with a filename and a list of K2 values and for every
-    item in the list, it calls Emit3 with this file name. So Reduce helps the Search
-    program divide it's work to counting every file name occurrence in a single
-    Reduce progress.
-    As described, my implementation of K1 is a directory name and V1 is a substring.
-    The implementation of K2 is the file name, which emitted by Map while filtering
-    the directory (K1) using the substring (V1). As for V2, it does not have a
-    specific implementation because the whole use of the value is to serve as a
-    counter of appearances for each file name (K2). So every Emit2 will emit
-    the file name with a nullptr and when the Reduce phase will take action it will
-    merely count the size of the list of (V2) i.e. the number of nullptr items.
-    As for K3 this is also representing a file name which passed the filtering.
-    Again, for V3 the implementation was not required because the final output
-    of the Search program is printing the file names without any additional
-    information.
-
-Design of the Framework implementation:
-    The Framework is supported by the Thread class which is a wrapper class
-    for the pthread_t object and has some useful data and functions in order
-    to maintain the Framework and the Threads more easily.
-    The Framework holds several shared data and the Threads containers are one of them.
-    For the Map and Reduce Threads I used a Vector which holds a MapThread/ReduceThread
-    for each Thread respectively. For every shared data there is a Mutex to maintain
-    concurrency.
-    While the Map procedure is running, each MapThread object has it's own
-    Vector of K2, V2 pairs and each Emit2 call is adding the values to the corresponding
-    Thread's Vector. The same goes for the ReduceThreads while using Emit3. When the
-    Shuffle Thread wants to do some shuffling it searches in the MapThreads Vector
-    for a MapThread which holds items in its Vector and shuffle it's item while clearing
-    it's Vector. All the Shuffle results are in a shared map which maps K2 to
-    V2 Vector. Using map allows more efficiency in run time.
-    The communication between Shuffle and Map is by a Semaphore which indicates
-    to the Shuffle when Emit2 occurred and it can wake up and shuffle. Some useful
-    flag is the flag indicates that all the MapThreads finished their work. In that
-    case we wake up the Shuffle one more time to clear and shuffle all the items
-    from all the MapThreads.
-    As I mentioned each MapThread holds it's own Vector of K2, V2. In addition
-    each MapThread holds a Mutex for this Vector. This Mutex is used for concurrency
-    between writing to the Vector by Map and between reading from the Vector by Shuffle
-    (and clearing it as well).
-    Reduce using the shared map created by Shuffle while maintaining a global
-    Iterator (which is locked by Mutex) which works the same as the global index
-    for the input items and the Map procedure.
-    When Reduce finished it's task, the main Thread then merges all the items
-    from all the ReduceThreads in one output Vector, sorts it and returns it.
-    When dealing with releasing the resources of K2, V2 I first checked inside the Shuffle
-    if a deletion is required. A deletion is required in the Shuffle if the current
-    K2 is already in the Shuffle map thus we append it's V2 to the already existing K2.
-    If this is the case (and autoDeleteV2K2 is true) then Shuffle frees it's memory.
-    Now in the main Thread that runs RunMapReduceFramework, we iterate through the
-    entire Shuffle map and release all the K2 keys with all the V2 in every
-    Vector of this K2. Working like this assures that all the K2 and V2 are freed because
-    all the V2 are never gets lost during the Framework process and for every K2 that
-    got lost we take care of it's memory in the Shuffle procedure.
+    The CacheFS Library is using several data in order to maintain it's functionality.
+    First there is a Block struct which represent a single file block in the cache.
+    A Block has it's own buffer which allocated on the heap and also store some data
+    about itself like the path of the file in which it belongs and like it's block number
+    in this file. It also holds it's reference counter and the section that it appears
+    inside the cache (these last two are mainly used for the algorithms implementations).
+    The Library then holds a list of these Block object which represent the entire cache.
+    When the library initialize itself, using CacheFS_init() we set all this data properly
+    for the current run of the library. Now when a new file is opened in order to be used
+    we set it's file ID to be the file descriptor returned from the open() function, but
+    the way our library manages the cache is by the file's full path. That is way we hold
+    a map from file descriptors to file paths. So in this implementation it is possible
+    for the same file to have multiple file IDs (i.e. file descriptors). When there is
+    a read attempt, we receive a file ID in the pread() arguments and first thing we do is
+    get the file path corresponding to this file ID using our map. When checking if a block is
+    in the cache we perform some calculations and extract for each read call some useful data
+    about this current read call. This data is also contains the block numbers in the file
+    thus we can check if a block is in the cache by using the path and the block number
+    (Recall the Block struct fields). Implementing the different Cache Policies (LRU/LFU/FBR)
+    is done by several functions which implement each task in the read by the requested policy.
+    The read procedure is the same for all policies except for some specific tasks like the
+    procedure in a cache miss, or cache hit. So only in these cases we have the different
+    functions for the different policies.
 
 
 ANSWERS:
-Theoretical Questions:
-    1. An alternative implementation using Conditional Variables described as follows:
-    Using pthread_cond_timedwait() when Map will signal to Shuffle.
-
-    abstime = TIME_INTERVAL
-    mapsFlag = false
-
-    /** ExecMap **/
-    // Perform Map procedure and locking + unlocking the mutex for the shared container.
-    pthread_cond_signal(condVariable);
-    mapsFlag = true;
-
-    /** ExecShuffle **/
-    while (true)
-        if (!mapsFlag)
-            pthread_cond_timedwait(condVariable, mutex, abstime);
-        // Perform Map procedure and locking + unlocking the mutex for the shared container.
-
-    We could not use pthread_cond_wait() because there is the case when the last Map
-    has finished and thus all Map Threads have finished but Shuffle was during it's flow.
-    In that case the Shuffle may get stuck in waiting for the next signal but no Map Thread
-    will ever signal it to him, and so we use pthread_cond_timedwait().
-
-    2. On a system with which contains 8 cores but with no Hyper-Threading support the best
-    value of multiThreadLevel to optimize performance would be 7. That is because we will
-    create 7 Map threads + 1 Shuffle thread and will use all of our 8 cores simultaneously.
-    If we will use less then 7 multiThreadLevel then we will not take advantage of all of
-    the cores in the system and utilization will not be optimized. If we will use more
-    7 multiThreadLevel then there will be several threads that will have to wait for CPU
-    time and thus there will be threads that won't utilize CPU time to optimum.
-
-    3.  a. Utilizing Multi-Cores:
-            - Nira -    Running a single process with a single thread can't help
-                        in Utilizing Multi-Cores.
-            - Moti -    Using POSIX is using Kernel-Level Threads which can help in
-                        Utilizing Multi-Cores.
-            - Danny -   Using our User-Level Threads Library run can't help in
-                        Utilizing Multi-Cores.
-            - Galit -   Can be Utilizing Multi-Cores while different processes will run
-                        on different cores.
-        b. The ability to create a sophisticated scheduler, based on internal data:
-            - Nira -    Running a single process with a single thread does not need a
-                        Scheduler at all.
-            - Moti -    Using POSIX will also determine the scheduling decisions by the
-                        operating system, therefore Moti can't create a
-                        sophisticated scheduler.
-            - Danny -   Using our User-Level Threads Library can give Danny the power to
-                        create a sophisticated scheduler, based on internal data.
-            - Galit -   If a scheduling decision will occur it will by by the operating
-                        system scheduler, therefore Galit can't create a
-                        sophisticated scheduler.
-        c. Communication time (between different threads/processes):
-            - Nira -    No threads/processes so no communication is done.
-            - Moti -    Using Kernel-Level Threads has more efficient communication time
-                        then Galit but less then Danny. That is because communication
-                        requires the operating system.
-            - Danny -   Using User-Level Threads has more efficient communication time
-                        then Galit and Danny.
-            - Galit -   Using processes has the worst communication time. That is because
-                        communication requires the operating system and using IPC
-                        (and as we saw it less efficient than threads).
-        d. Ability to progress while a certain thread/process is blocked:
-            - Nira -    If the process/threads is blocked, than Nira's whole run will
-                        be blocked.
-            - Moti -    If one of the threads is blocked it does not affect other threads or
-                        processes.
-            - Danny -   If one of the threads is blocked it does not affect other threads or
-                        processes. Also, in User-Level Threads if the main thread is
-                        blocked it doesn't block the entire process/program.
-                        Nevertheless if the process which holds the threads is blocked
-                        then all the threads inside it are blocked.
-            - Galit -   Each process is independent therefore blocking a process will not
-                        block other processes. Nevertheless a parent
-        e. Overall speed:
-            Depending on the system we can describe the overall speed.
-            - Nira -    If the system has only one core and/or can simulate only one core
-                        then Nira will have the best overall time because she avoid context
-                        switch and a lot of overhead.
-                        In other system specs with multi cores and hyper threading Nira
-                        will probably be the worst in overall time.
-            - Moti -    Kernel-Level Threads depends on the operating system and will have
-                        better overall time then Galit which uses processes. If the system
-                        is with multi cores then Moti has the advantage because Galit
-                        using processes and Danny can't use it's Library on the hardware.
-                        But if the system has hyper threading then Danny has advantage on
-                        Moti because User-Level Threads require no operting system and the
-                        context switch is much faster.
-            - Danny -   As mentioned on multi cores Danny can't be more efficient then Moti
-                        nor Galit.
-            - Galit -   As we mentioned, Galit will have advantage on multi core system
-                        but no better then Moti because the switch of threads is more
-                        efficient then of processes.
-
-    4. 	a. Stack:
-            - Kernel-Level Thread - The stack isn't shared between parent and it's child.
-			- User-Level Thread -   The stack isn't shared between parent and it's child.
-			- Process -             While all the parent's data is copied to the child process
-                                    this is just a copy of it and they don't share the stack.
-		b. Heap:  
-            - Kernel-Level Thread - The heap is shared between parent and child.
-			- User-Level Thread -   The heap is shared between parent and child.
-            - Process -             While all the parent's data is copied to the child process
-                                    this is just a copy of it and they don't share the heap.
-        c. Global Variables:
-            - Kernel-Level Thread - The global variables are shared between the parent
-                                    and it's child.
-            - User-Level Thread -   The global variables are shared between the parent
-                                    and it's child.
-            - Process -             While all the parent's data is copied to the child process
-                                    this is just a copy of it and they don't share the
-                                    global variables.
-
-    5. The difference between deadlock and livelock is that in deadlock there are two
-	or more threads/processes which hold some lock and wait for the lock of others and 
-	so each one is waiting for the other in some cyclic waiting, hence locked.
-	While in livelock the processes are locked, like in deadlock, the reason for this
-	is different. In livelock each process is constantly changing it's state in order
-	to assist the other processes to continue with their progress, so in livelock
-	everybody is trying to make everybody to run, thus not making any progress, 
-	and in deadlock each one is trying to make it's own process to run. As we mentioned 
-	in class, livelock is a state where everybody is too polite, and we can think of 
-	livelock as a situation of the processes trying to avoid in reaching a deadlock.
-	An example of deadlock is like in the Dining Philosophers where each philosopher
-	is holding one chopstick and attempts to hold the other chopstick, which is already
-	held by another philosopher.
-	An example of livelock is when two people attempt to get inside a room and get stuck
-	the entrance because each one is too polite and wait for the other to get inside
-	before him.
+    All answers in the 'Answers.pdf' file.
